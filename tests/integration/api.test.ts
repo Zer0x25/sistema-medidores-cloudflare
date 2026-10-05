@@ -150,4 +150,196 @@ describe("Integración HTTP en Cloudflare Workers (Hono App)", () => {
       expect(json.error).toBe("VALIDATION_ERROR");
     });
   });
+
+  describe("Gestión de Usuarios y Asignación de Instalaciones (Persistencia y Simetría)", () => {
+    const adminUser: AuthUser = {
+      id: "usr-admin-1",
+      email: "admin@empresa.com",
+      nombre: "Admin Sistema",
+      rol: "ADMIN",
+    };
+    const adminToken = signJwt(adminUser, JWT_SECRET);
+
+    it("GET /api/usuarios debe entregar usuarios con su colección de instalaciones asignadas", async () => {
+      const runMock = vi.fn().mockResolvedValue({ success: true });
+      const firstMock = vi.fn().mockResolvedValue(null);
+      const prepareMock = vi.fn((sql: string) => {
+        if (sql.includes("FROM usuarios")) {
+          return {
+            all: vi.fn().mockResolvedValue({
+              results: [
+                { id: "usr-op-1", email: "op1@test.cl", nombre: "Operador 1", rol: "OPERADOR", activo: 1, createdAt: "2026-10-05T00:00:00Z", updatedAt: "2026-10-05T00:00:00Z" },
+              ],
+            }),
+            bind: vi.fn().mockReturnThis(),
+            run: runMock,
+            first: firstMock,
+          };
+        }
+        if (sql.includes("FROM asignaciones_operadores")) {
+          return {
+            all: vi.fn().mockResolvedValue({
+              results: [
+                { usuarioId: "usr-op-1", id: "inst-01", nombre: "Planta Norte" },
+              ],
+            }),
+            bind: vi.fn().mockReturnThis(),
+            run: runMock,
+            first: firstMock,
+          };
+        }
+        return {
+          all: vi.fn().mockResolvedValue({ results: [] }),
+          bind: vi.fn().mockReturnThis(),
+          run: runMock,
+          first: firstMock,
+        };
+      });
+
+      const env = createMockEnv({
+        DB: { prepare: prepareMock } as unknown as D1Database,
+      });
+
+      const res = await app.request(
+        "/api/usuarios",
+        {
+          method: "GET",
+          headers: { Authorization: `Bearer ${adminToken}` },
+        },
+        env
+      );
+
+      expect(res.status).toBe(200);
+      const json = await res.json() as Array<{ id: string; email: string; instalaciones: Array<{ id: string; nombre: string }> }>;
+      expect(Array.isArray(json)).toBe(true);
+      expect(json.length).toBe(1);
+      expect(json[0].id).toBe("usr-op-1");
+      expect(Array.isArray(json[0].instalaciones)).toBe(true);
+      expect(json[0].instalaciones.length).toBe(1);
+      expect(json[0].instalaciones[0].id).toBe("inst-01");
+      expect(json[0].instalaciones[0].nombre).toBe("Planta Norte");
+    });
+
+    it("PATCH /api/usuarios/:id con instalacionesIds debe sincronizar asignaciones_operadores", async () => {
+      const statementsRun: string[] = [];
+      const runMock = vi.fn().mockImplementation(function (this: { sql?: string }) {
+        return Promise.resolve({ success: true });
+      });
+
+      const prepareMock = vi.fn((sql: string) => {
+        statementsRun.push(sql);
+        return {
+          bind: vi.fn().mockReturnValue({
+            run: runMock,
+            all: vi.fn().mockResolvedValue({ results: [{ id: "inst-99", nombre: "Sede Centro" }] }),
+            first: vi.fn().mockResolvedValue(null),
+          }),
+          run: runMock,
+          all: vi.fn().mockResolvedValue({ results: [] }),
+          first: vi.fn().mockResolvedValue(null),
+        };
+      });
+
+      const env = createMockEnv({
+        DB: { prepare: prepareMock } as unknown as D1Database,
+      });
+
+      const res = await app.request(
+        "/api/usuarios/usr-op-1",
+        {
+          method: "PATCH",
+          headers: {
+            "Authorization": `Bearer ${adminToken}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            instalacionesIds: ["inst-99"],
+          }),
+        },
+        env
+      );
+
+      expect(res.status).toBe(200);
+      const json = await res.json() as { success: boolean; message: string; instalaciones: Array<{ id: string; nombre: string }> };
+      expect(json.success).toBe(true);
+      expect(json.instalaciones.length).toBe(1);
+
+      // Verificar que se haya ejecutado DELETE previo y luego INSERT
+      const hasDelete = statementsRun.some((s) => s.includes("DELETE FROM asignaciones_operadores"));
+      const hasInsert = statementsRun.some((s) => s.includes("INSERT INTO asignaciones_operadores"));
+      expect(hasDelete).toBe(true);
+      expect(hasInsert).toBe(true);
+    });
+
+    it("POST /api/instalaciones/:id/operadores debe asignar operador con código 201", async () => {
+      const statementsRun: string[] = [];
+      const prepareMock = vi.fn((sql: string) => {
+        statementsRun.push(sql);
+        return {
+          bind: vi.fn().mockReturnValue({
+            run: vi.fn().mockResolvedValue({ success: true }),
+            all: vi.fn().mockResolvedValue({ results: [] }),
+            first: vi.fn().mockResolvedValue(null),
+          }),
+        };
+      });
+
+      const env = createMockEnv({
+        DB: { prepare: prepareMock } as unknown as D1Database,
+      });
+
+      const res = await app.request(
+        "/api/instalaciones/inst-01/operadores",
+        {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${adminToken}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ usuarioId: "usr-op-1" }),
+        },
+        env
+      );
+
+      expect(res.status).toBe(201);
+      const json = await res.json() as { instalacionId: string; usuarioId: string };
+      expect(json.instalacionId).toBe("inst-01");
+      expect(json.usuarioId).toBe("usr-op-1");
+      expect(statementsRun.some((s) => s.includes("INSERT INTO asignaciones_operadores"))).toBe(true);
+    });
+
+    it("DELETE /api/instalaciones/:id/operadores/:usuarioId debe desasignar operador con código 200", async () => {
+      const statementsRun: string[] = [];
+      const prepareMock = vi.fn((sql: string) => {
+        statementsRun.push(sql);
+        return {
+          bind: vi.fn().mockReturnValue({
+            run: vi.fn().mockResolvedValue({ success: true }),
+            all: vi.fn().mockResolvedValue({ results: [] }),
+            first: vi.fn().mockResolvedValue(null),
+          }),
+        };
+      });
+
+      const env = createMockEnv({
+        DB: { prepare: prepareMock } as unknown as D1Database,
+      });
+
+      const res = await app.request(
+        "/api/instalaciones/inst-01/operadores/usr-op-1",
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${adminToken}`,
+          },
+        },
+        env
+      );
+
+      expect(res.status).toBe(200);
+      const json = await res.json() as { success: boolean; message: string };
+      expect(json.success).toBe(true);
+      expect(statementsRun.some((s) => s.includes("DELETE FROM asignaciones_operadores"))).toBe(true);
+    });
+  });
 });

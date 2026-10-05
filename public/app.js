@@ -1039,6 +1039,32 @@ async function submitCambiarPassword(event) {
   }
 }
 
+async function abrirModalNuevoUsuario() {
+  if (!instalacionesCache || instalacionesCache.length === 0) {
+    try {
+      instalacionesCache = await window.api.instalaciones.getAll();
+    } catch (_) {}
+  }
+  const listContainer = document.getElementById("nuevoUsuarioInstalacionesList");
+  if (listContainer) {
+    if (instalacionesCache.length === 0) {
+      listContainer.innerHTML = '<span class="form-hint" style="color: var(--text-muted);">No hay sedes registradas aún.</span>';
+    } else {
+      listContainer.innerHTML = instalacionesCache
+        .map(
+          (inst) => `
+          <label class="checklist-item">
+            <input type="checkbox" name="nuevoInstalacionCheck" value="${inst.id}">
+            <span>${escapeHtml(inst.nombre)} <span style="font-size: 0.75rem; color: var(--text-muted);">(${escapeHtml(inst.ubicacion || inst.direccion)})</span></span>
+          </label>
+        `
+        )
+        .join("");
+    }
+  }
+  window.Modal.open("modalNuevoUsuario");
+}
+
 async function submitNuevoUsuario(event) {
   event.preventDefault();
   const nombre = document.getElementById("inputNuevoUsuarioNombre").value.trim();
@@ -1046,8 +1072,16 @@ async function submitNuevoUsuario(event) {
   const password = document.getElementById("inputNuevoUsuarioPassword").value;
   const rol = document.getElementById("selectNuevoUsuarioRol").value;
 
+  const checkedCheckboxes = document.querySelectorAll('input[name="nuevoInstalacionCheck"]:checked');
+  const instalacionesIds = Array.from(checkedCheckboxes).map((cb) => cb.value);
+
   try {
-    await window.api.usuarios.create({ nombre, email, password, rol });
+    const res = await window.api.usuarios.create({ nombre, email, password, rol, instalacionesIds });
+    if (instalacionesIds.length > 0 && res && res.usuario && res.usuario.id) {
+      try {
+        await window.api.usuarios.update(res.usuario.id, { instalacionesIds });
+      } catch (_) {}
+    }
     window.Toast.success(`Usuario «${nombre}» creado exitosamente.`, "Directorio");
     document.getElementById("formNuevoUsuario").reset();
     window.Modal.close("modalNuevoUsuario");
@@ -1058,8 +1092,20 @@ async function submitNuevoUsuario(event) {
 }
 
 async function abrirModalEditarUsuario(usuarioId) {
-  const usuario = usuariosCache.find((u) => u.id === usuarioId);
+  let usuario = usuariosCache.find((u) => u.id === usuarioId);
+  if (!usuario) {
+    try {
+      usuariosCache = await window.api.usuarios.getAll();
+      usuario = usuariosCache.find((u) => u.id === usuarioId);
+    } catch (_) {}
+  }
   if (!usuario) return;
+
+  if (!instalacionesCache || instalacionesCache.length === 0) {
+    try {
+      instalacionesCache = await window.api.instalaciones.getAll();
+    } catch (_) {}
+  }
 
   document.getElementById("editUsuarioId").value = usuario.id;
   document.getElementById("editUsuarioNombre").value = usuario.nombre;
@@ -1070,16 +1116,22 @@ async function abrirModalEditarUsuario(usuarioId) {
   const listContainer = document.getElementById("editUsuarioInstalacionesList");
   const assignedIds = new Set((usuario.instalaciones || []).map((i) => i.id));
 
-  listContainer.innerHTML = instalacionesCache
-    .map(
-      (inst) => `
-      <label class="checklist-item">
-        <input type="checkbox" name="editInstalacionCheck" value="${inst.id}" ${assignedIds.has(inst.id) ? "checked" : ""}>
-        <span>${escapeHtml(inst.nombre)} <span style="font-size: 0.75rem; color: var(--text-muted);">(${escapeHtml(inst.ubicacion)})</span></span>
-      </label>
-    `
-    )
-    .join("");
+  if (listContainer) {
+    if (instalacionesCache.length === 0) {
+      listContainer.innerHTML = '<span class="form-hint" style="color: var(--text-muted);">No hay sedes registradas aún.</span>';
+    } else {
+      listContainer.innerHTML = instalacionesCache
+        .map(
+          (inst) => `
+          <label class="checklist-item">
+            <input type="checkbox" name="editInstalacionCheck" value="${inst.id}" ${assignedIds.has(inst.id) ? "checked" : ""}>
+            <span>${escapeHtml(inst.nombre)} <span style="font-size: 0.75rem; color: var(--text-muted);">(${escapeHtml(inst.ubicacion || inst.direccion)})</span></span>
+          </label>
+        `
+        )
+        .join("");
+    }
+  }
 
   window.Modal.open("modalEditarUsuario");
 }
@@ -1763,6 +1815,7 @@ window.onOperadorInstalacionChange = onOperadorInstalacionChange;
 window.cargarUsuariosAdmin = cargarUsuariosAdmin;
 window.submitCambiarPassword = submitCambiarPassword;
 window.submitNuevoUsuario = submitNuevoUsuario;
+window.abrirModalNuevoUsuario = abrirModalNuevoUsuario;
 window.abrirModalEditarUsuario = abrirModalEditarUsuario;
 window.submitEditarUsuario = submitEditarUsuario;
 window.abrirModalResetPassword = abrirModalResetPassword;

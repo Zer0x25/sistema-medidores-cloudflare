@@ -63,7 +63,9 @@ En Cloudflare D1, el límite del Free Tier es de **5,000,000 de filas leídas po
 Queda estrictamente prohibido permitir que valores nulos o indefinidos se serialicen como literales visibles hacia el usuario:
 - **Cadenas Prohibidas en Vistas o Respuestas:** `'undefined'`, `'null'`, `'NaN'`, `'Invalid Date'`, `'[object Object]'`.
 - **Normalización de Fechas:** Las fechas almacenadas en SQLite como string (`YYYY-MM-DD HH:mm:ss`) deben normalizarse a formato ISO-8601 estricto (`YYYY-MM-DDTHH:mm:ssZ`) en las rutas antes de ser devueltas en JSON.
-- **Simetría Bidireccional:** Todo campo que la UI envíe (ej. `nombre`, `ubicacion`, `unidad`) debe estar presente y con el mismo nombre y estructura en los endpoints de lectura `GET`.
+- **Simetría Bidireccional:** Todo campo que la UI envíe (ej. `nombre`, `ubicacion`, `unidad`, `instalacionesIds`) debe estar presente y con el mismo nombre y estructura en los endpoints de lectura `GET`.
+- **Invariante Read-After-Write (Roundtrip Testing):** Queda estrictamente prohibido dar por válida una prueba de mutación (`POST`, `PATCH`, `DELETE`) basándose únicamente en el código HTTP 200/201. Toda suite de pruebas y el script de simetría (`scripts/test-contract-symmetry.mjs`) DEBEN verificar mediante una consulta `GET` subsecuente que el dato y sus relaciones persistan efectivamente en Cloudflare D1 y se serialicen en la respuesta de lectura.
+- **Validación Estricta de Existencia (Cero Falsos 200):** Todo endpoint de acción o mantenimiento (`/calibrar`, `/cambiar-precinto`, `/baja-tecnica`, `/resolver`, `/facturas`) DEBE comprobar mediante consulta indexada la existencia de la entidad objetivo antes de mutar. Si no existe, responderá `404 NOT_FOUND` en lugar de un falso `200 { success: true }`.
 - **Test de Simetría Obligatorio:** Debe superarse sin errores `npm run test:contract` (o `npm run test:contract:remote` para el entorno desplegado).
 
 ---
@@ -105,7 +107,7 @@ El Quality Gate evalúa automáticamente en 4 fases secuenciales:
 1. **Sincronización Tipada:** Regenera Prisma Client (`npm run prisma:generate`) y los bindings de Wrangler (`npx wrangler types`).
 2. **Typecheck Estricto:** `npm run typecheck` (`tsc --noEmit`) sin advertencias ni errores TS.
 3. **Linter Estricto:** `npm run lint` (`eslint "src/**/*.ts" "tests/**/*.ts"`). Prohibido el uso de `any` sin justificación explícita.
-4. **Suite de Pruebas (Vitest):** `npm test` (`vitest run`). Evalúa pruebas unitarias, integración HTTP con Hono `app.request()` y pruebas de contrato.
+4. **Suite de Pruebas (Vitest):** `npm test` (`vitest run`). Evalúa pruebas unitarias, integración HTTP con Hono `app.request()` y pruebas de contrato con verificación simétrica Read-After-Write (roundtrip de mutación y persistencia).
 
 ---
 

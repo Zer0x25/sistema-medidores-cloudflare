@@ -184,6 +184,80 @@ async function run() {
   assertNoLeak(renderedCardDate, "Fecha de Tarjeta de Medidor");
   assertNoLeak(`${ult.valor} ${foundMed.tipoMedidor.unidadMedida}`, "Valor y Unidad de Tarjeta");
 
+  // 8. Creación de Usuario, Asignación de Instalación y Verificación Roundtrip (Read-After-Write)
+  const testUserEmail = `operador-roundtrip-${Date.now()}@medidores.cl`;
+  console.log(`\n6️⃣ Creando Usuario Operador: "${testUserEmail}"...`);
+  const createUserRes = await fetch(`${BASE_URL}/api/auth/register`, {
+    method: "POST",
+    headers: authHeaders,
+    body: JSON.stringify({
+      email: testUserEmail,
+      nombre: "Operador Verificación Persistencia",
+      password: "passwordTemporal123!",
+      rol: "OPERADOR",
+    }),
+  });
+  if (!createUserRes.ok) throw new Error(`Error creando usuario: HTTP ${createUserRes.status}`);
+  const userCreatedData = await createUserRes.json();
+  const createdUserId = userCreatedData.usuario?.id || userCreatedData.id;
+  if (!createdUserId) throw new Error("La respuesta de registro no contiene ID de usuario.");
+
+  console.log(`   🔍 Asignando instalación «${foundInst.nombre}» al usuario creado...`);
+  const patchUserRes = await fetch(`${BASE_URL}/api/usuarios/${createdUserId}`, {
+    method: "PATCH",
+    headers: authHeaders,
+    body: JSON.stringify({
+      instalacionesIds: [foundInst.id],
+    }),
+  });
+  if (!patchUserRes.ok) throw new Error(`Error asignando instalación: HTTP ${patchUserRes.status}`);
+
+  console.log("   🔍 Verificando que la asignación se mantenga en GET /api/usuarios...");
+  const listUsersRes = await fetch(`${BASE_URL}/api/usuarios`, { headers: authHeaders });
+  if (!listUsersRes.ok) throw new Error(`Error listando usuarios: HTTP ${listUsersRes.status}`);
+  const usersList = await listUsersRes.json();
+  const foundUser = usersList.find((u) => u.id === createdUserId);
+  if (!foundUser) throw new Error("El usuario recién creado no aparece en GET /api/usuarios.");
+
+  if (!Array.isArray(foundUser.instalaciones) || !foundUser.instalaciones.some((i) => i.id === foundInst.id)) {
+    throw new Error(`[BUG DE PERSISTENCIA DETECTADO]: La instalación no fue asignada o no se mantiene en GET /api/usuarios. Instalaciones recibidas: ${JSON.stringify(foundUser.instalaciones)}`);
+  }
+  console.log("   ✓ Instalación asignada persistida y verificada exitosamente en GET /api/usuarios.");
+
+  // Comprobar que en GET /api/instalaciones/operador/:usuarioId la sede esté presente
+  const getInstOpRes = await fetch(`${BASE_URL}/api/instalaciones/operador/${createdUserId}`, { headers: authHeaders });
+  if (getInstOpRes.ok) {
+    const instOpList = await getInstOpRes.json();
+    if (!instOpList.some((i) => i.id === foundInst.id)) {
+      throw new Error("La instalación no aparece en GET /api/instalaciones/operador/:usuarioId");
+    }
+    console.log("   ✓ Instalación verificada en GET /api/instalaciones/operador/:usuarioId.");
+  }
+
+  // Simulación de renderizado del badge en UI
+  const renderedBadge = `🏢 ${foundUser.instalaciones[0].nombre}`;
+  console.log(`   📋 Render en badge de usuario: "${renderedBadge}"`);
+  assertNoLeak(renderedBadge, "Badge Instalación Asignada");
+
+  // Desasignación y verificación de que se remueva (roundtrip inverso)
+  console.log("   🔍 Desasignando instalación...");
+  const patchClearRes = await fetch(`${BASE_URL}/api/usuarios/${createdUserId}`, {
+    method: "PATCH",
+    headers: authHeaders,
+    body: JSON.stringify({
+      instalacionesIds: [],
+    }),
+  });
+  if (!patchClearRes.ok) throw new Error(`Error desasignando instalación: HTTP ${patchClearRes.status}`);
+
+  const listUsersAfterRes = await fetch(`${BASE_URL}/api/usuarios`, { headers: authHeaders });
+  const usersAfterList = await listUsersAfterRes.json();
+  const foundUserAfter = usersAfterList.find((u) => u.id === createdUserId);
+  if (foundUserAfter.instalaciones && foundUserAfter.instalaciones.length > 0) {
+    throw new Error("[BUG DE PERSISTENCIA DETECTADO]: La desasignación no se mantuvo en base de datos.");
+  }
+  console.log("   ✓ Desasignación confirmada (0 sedes asignadas).");
+
   console.log("\n==================================================================");
   console.log("🎉 ¡TEST DE SIMETRÍA EXITOSO! Cero leaks de 'undefined', 'null', 'NaN' o 'Invalid Date'.");
   console.log("==================================================================\n");

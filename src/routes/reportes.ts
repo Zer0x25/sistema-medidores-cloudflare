@@ -51,6 +51,9 @@ reportesRouter.post("/api/reportes/facturas", async (c) => {
   const id = crypto.randomUUID();
   const data = parsed.data;
 
+  const inst = await c.env.DB.prepare("SELECT id FROM instalaciones WHERE id = ?").bind(data.instalacionId).first();
+  if (!inst) return c.json({ error: "NOT_FOUND", message: "Instalación no encontrada" }, 404);
+
   // Calcular consumo medido por medidores de esa instalación y recurso en el período
   const medicion = await c.env.DB.prepare(`
     SELECT COALESCE(MAX(l.valor) - MIN(l.valor), 0) as consumoMedido

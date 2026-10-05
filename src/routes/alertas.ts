@@ -96,6 +96,9 @@ alertasRouter.get("/api/alertas/incidentes", async (c) => {
 alertasRouter.post("/api/alertas/incidentes/:id/resolver", async (c) => {
   const user = c.get("user");
   const id = c.req.param("id");
+  const incidente = await c.env.DB.prepare("SELECT id FROM incidentes_alerta WHERE id = ?").bind(id).first();
+  if (!incidente) return c.json({ error: "NOT_FOUND", message: "Incidente no encontrado" }, 404);
+
   const body = await c.req.json() as { estado?: string; notasResolucion?: string };
   const nuevoEstado = body.estado || "RESUELTO";
   const notas = body.notasResolucion || "Resuelto por operador";

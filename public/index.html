@@ -594,7 +594,7 @@
           <p class="view-desc">Administra el directorio de usuarios, asignación de sedes operativas y restablecimiento de contraseñas.</p>
         </div>
         <div class="view-actions">
-          <button class="btn btn-primary" id="btnOpenModalNuevoUsuario" onclick="openModal('modalNuevoUsuario')">
+          <button class="btn btn-primary" id="btnOpenModalNuevoUsuario" onclick="abrirModalNuevoUsuario()">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
               <circle cx="9" cy="7" r="4"/>
@@ -1371,6 +1371,13 @@
               <option value="ADMIN">ADMIN (Control global, sedes y usuarios)</option>
             </select>
           </div>
+          <div class="form-group" id="nuevoInstalacionesContainer">
+            <label class="form-label">Sedes / Instalaciones Asignadas (Opcional)</label>
+            <span class="form-hint" style="margin-bottom: 0.4rem; display: block;">Aplica para el alcance operativo de Supervisores y Operadores.</span>
+            <div class="checklist-container" id="nuevoUsuarioInstalacionesList">
+              <!-- Checkboxes inyectados dinámicamente -->
+            </div>
+          </div>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-outline" onclick="closeModal('modalNuevoUsuario')">Cancelar</button>
@@ -1413,7 +1420,7 @@
               </select>
             </div>
           </div>
-          <div class="form-group">
+          <div class="form-group" id="editInstalacionesContainer">
             <label class="form-label">Sedes / Instalaciones Asignadas</label>
             <span class="form-hint" style="margin-bottom: 0.4rem; display: block;">Aplica para el alcance operativo de Supervisores y Operadores.</span>
             <div class="checklist-container" id="editUsuarioInstalacionesList">

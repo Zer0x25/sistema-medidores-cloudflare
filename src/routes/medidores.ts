@@ -292,6 +292,10 @@ medidoresRouter.post("/api/medidores/:id/calibrar", async (c) => {
   if (!parsed.success) return c.json({ error: "VALIDATION_ERROR", message: "Datos inválidos" }, 400);
 
   const { tecnicoResponsable, proximaCalibracion, certificadoCalibracion, observaciones } = parsed.data;
+
+  const medidor = await c.env.DB.prepare("SELECT id FROM medidores WHERE id = ?").bind(id).first();
+  if (!medidor) return c.json({ error: "NOT_FOUND", message: "Medidor no encontrado" }, 404);
+
   const hoy = new Date().toISOString();
 
   await c.env.DB.prepare(`
@@ -366,6 +370,9 @@ medidoresRouter.post("/api/medidores/:id/baja-tecnica", async (c) => {
   const body = await c.req.json();
   const parsed = BajaTecnicaSchema.safeParse(body);
   if (!parsed.success) return c.json({ error: "VALIDATION_ERROR", message: "Datos inválidos" }, 400);
+
+  const medidor = await c.env.DB.prepare("SELECT id FROM medidores WHERE id = ?").bind(id).first();
+  if (!medidor) return c.json({ error: "NOT_FOUND", message: "Medidor no encontrado" }, 404);
 
   const { motivoBaja, lecturaRetiro, nuevoMedidorCodigo, tecnicoResponsable, observaciones } = parsed.data;
 

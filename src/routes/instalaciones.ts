@@ -86,8 +86,12 @@ instalacionesRouter.get("/api/instalaciones/:id", async (c) => {
   return c.json({ ...inst, direccion: inst.ubicacion, activa: Boolean(inst.activa) });
 });
 
-// Asignar operador a instalación
-instalacionesRouter.post("/api/instalaciones/:id/asignar-operador", async (c) => {
+import type { Context } from "hono";
+
+type AppContext = Context<{ Bindings: Env; Variables: Variables }>;
+
+// Asignar operador a instalación (soporta tanto /asignar-operador como estándar /operadores)
+const handleAsignarOperador = async (c: AppContext) => {
   const user = c.get("user");
   if (!user || (user.rol !== "ADMIN" && user.rol !== "SUPERVISOR")) {
     return c.json({ error: "FORBIDDEN", message: "Permisos insuficientes" }, 403);
@@ -112,10 +116,13 @@ instalacionesRouter.post("/api/instalaciones/:id/asignar-operador", async (c) =>
   } catch {
     return c.json({ error: "ASIGNACION_DUPLICADA", message: "El operador ya está asignado a esta instalación" }, 409);
   }
-});
+};
+
+instalacionesRouter.post("/api/instalaciones/:id/asignar-operador", handleAsignarOperador);
+instalacionesRouter.post("/api/instalaciones/:id/operadores", handleAsignarOperador);
 
 // Remover operador de instalación
-instalacionesRouter.delete("/api/instalaciones/:id/remover-operador/:usuarioId", async (c) => {
+const handleRemoverOperador = async (c: AppContext) => {
   const user = c.get("user");
   if (!user || (user.rol !== "ADMIN" && user.rol !== "SUPERVISOR")) {
     return c.json({ error: "FORBIDDEN", message: "Permisos insuficientes" }, 403);
@@ -129,7 +136,10 @@ instalacionesRouter.delete("/api/instalaciones/:id/remover-operador/:usuarioId",
     .run();
 
   return c.json({ success: true, message: "Asignación removida" });
-});
+};
+
+instalacionesRouter.delete("/api/instalaciones/:id/remover-operador/:usuarioId", handleRemoverOperador);
+instalacionesRouter.delete("/api/instalaciones/:id/operadores/:usuarioId", handleRemoverOperador);
 
 // Listar operadores de una instalación
 instalacionesRouter.get("/api/instalaciones/:id/operadores", async (c) => {

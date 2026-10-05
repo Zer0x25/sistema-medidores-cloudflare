@@ -16,6 +16,7 @@ const RegisterSchema = z.object({
   password: z.string().min(6),
   nombre: z.string().min(2),
   rol: z.enum(["ADMIN", "SUPERVISOR", "OPERADOR"]).default("OPERADOR"),
+  instalacionesIds: z.array(z.string()).optional(),
 });
 
 const CambiarPasswordSchema = z.object({
@@ -27,6 +28,7 @@ const EditarUsuarioSchema = z.object({
   nombre: z.string().min(2).optional(),
   rol: z.enum(["ADMIN", "SUPERVISOR", "OPERADOR"]).optional(),
   activo: z.boolean().optional(),
+  instalacionesIds: z.array(z.string()).optional(),
 });
 
 // 1. Registro de nuevo usuario
@@ -37,7 +39,7 @@ usuariosRouter.post("/api/auth/register", async (c) => {
     return c.json({ error: "VALIDATION_ERROR", message: "Datos de usuario inválidos" }, 400);
   }
 
-  const { email, password, nombre, rol } = parsed.data;
+  const { email, password, nombre, rol, instalacionesIds } = parsed.data;
 
   // Verificar si ya existe
   const existente = await c.env.DB.prepare("SELECT id FROM usuarios WHERE email = ?").bind(email).first();
@@ -55,8 +57,34 @@ usuariosRouter.post("/api/auth/register", async (c) => {
     .bind(id, email, passwordHash, nombre, rol)
     .run();
 
-  const userPayload = { id, email, nombre, rol: rol as "ADMIN" | "SUPERVISOR" | "OPERADOR" };
-  const token = signJwt(userPayload, c.env.JWT_SECRET);
+  if (instalacionesIds && instalacionesIds.length > 0) {
+    for (const instId of instalacionesIds) {
+      const asigId = crypto.randomUUID();
+      await c.env.DB.prepare(`
+        INSERT INTO asignaciones_operadores (id, instalacionId, usuarioId, createdAt)
+        VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+      `)
+        .bind(asigId, instId, id)
+        .run();
+    }
+  }
+
+  const { results: asignadas } = await c.env.DB.prepare(`
+    SELECT i.id, i.nombre
+    FROM asignaciones_operadores a
+    JOIN instalaciones i ON a.instalacionId = i.id
+    WHERE a.usuarioId = ?
+    ORDER BY i.nombre ASC
+  `).bind(id).all<{ id: string; nombre: string }>();
+
+  const userPayload = {
+    id,
+    email,
+    nombre,
+    rol: rol as "ADMIN" | "SUPERVISOR" | "OPERADOR",
+    instalaciones: asignadas || [],
+  };
+  const token = signJwt({ id, email, nombre, rol: rol as "ADMIN" | "SUPERVISOR" | "OPERADOR" }, c.env.JWT_SECRET);
 
   await registrarAuditoria({
     db: c.env.DB,
@@ -64,7 +92,7 @@ usuariosRouter.post("/api/auth/register", async (c) => {
     accion: "REGISTRO_USUARIO",
     entidad: "Usuario",
     entidadId: id,
-    detalles: { email, rol },
+    detalles: { email, rol, instalacionesIds },
   });
 
   return c.json({ token, usuario: userPayload }, 201);
@@ -182,11 +210,32 @@ usuariosRouter.get("/api/usuarios", async (c) => {
     return c.json({ error: "FORBIDDEN", message: "Permisos insuficientes" }, 403);
   }
 
-  const { results } = await c.env.DB.prepare(
+  const { results: usuarios } = await c.env.DB.prepare(
     "SELECT id, email, nombre, rol, activo, createdAt, updatedAt FROM usuarios ORDER BY nombre ASC"
-  ).all();
+  ).all<{ id: string; email: string; nombre: string; rol: string; activo: number; createdAt: string; updatedAt: string }>();
 
-  const formatted = results.map(u => ({ ...u, activo: Boolean(u.activo) }));
+  // Consultar todas las asignaciones vigentes vinculadas a instalaciones existentes
+  const { results: asignaciones } = await c.env.DB.prepare(`
+    SELECT a.usuarioId, i.id, i.nombre
+    FROM asignaciones_operadores a
+    JOIN instalaciones i ON a.instalacionId = i.id
+    ORDER BY i.nombre ASC
+  `).all<{ usuarioId: string; id: string; nombre: string }>();
+
+  const asignacionesPorUsuario = new Map<string, Array<{ id: string; nombre: string }>>();
+  for (const a of asignaciones) {
+    if (!asignacionesPorUsuario.has(a.usuarioId)) {
+      asignacionesPorUsuario.set(a.usuarioId, []);
+    }
+    asignacionesPorUsuario.get(a.usuarioId)!.push({ id: a.id, nombre: a.nombre });
+  }
+
+  const formatted = usuarios.map((u) => ({
+    ...u,
+    activo: Boolean(u.activo),
+    instalaciones: asignacionesPorUsuario.get(u.id) || [],
+  }));
+
   return c.json(formatted);
 });
 
@@ -201,7 +250,7 @@ usuariosRouter.patch("/api/usuarios/:id", async (c) => {
   const body = await c.req.json();
   const parsed = EditarUsuarioSchema.safeParse(body);
   if (!parsed.success) {
-    return c.json({ error: "VALIDATION_ERROR", message: "Datos inválidos" }, 400);
+    return c.json({ error: "VALIDATION_ERROR", message: "Datos inválidos", details: parsed.error.issues }, 400);
   }
 
   const sets: string[] = [];
@@ -220,16 +269,34 @@ usuariosRouter.patch("/api/usuarios/:id", async (c) => {
     params.push(parsed.data.activo ? 1 : 0);
   }
 
-  if (sets.length === 0) {
-    return c.json({ message: "Sin cambios solicitados" });
+  if (sets.length > 0) {
+    sets.push("updatedAt = CURRENT_TIMESTAMP");
+    params.push(id);
+    await c.env.DB.prepare(`UPDATE usuarios SET ${sets.join(", ")} WHERE id = ?`)
+      .bind(...params)
+      .run();
   }
 
-  sets.push("updatedAt = CURRENT_TIMESTAMP");
-  params.push(id);
+  // Sincronizar asignaciones de instalaciones (transaccional e idempotente)
+  if (parsed.data.instalacionesIds !== undefined) {
+    await c.env.DB.prepare("DELETE FROM asignaciones_operadores WHERE usuarioId = ?")
+      .bind(id)
+      .run();
 
-  await c.env.DB.prepare(`UPDATE usuarios SET ${sets.join(", ")} WHERE id = ?`)
-    .bind(...params)
-    .run();
+    for (const instId of parsed.data.instalacionesIds) {
+      const asigId = crypto.randomUUID();
+      await c.env.DB.prepare(`
+        INSERT INTO asignaciones_operadores (id, instalacionId, usuarioId, createdAt)
+        VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+      `)
+        .bind(asigId, instId, id)
+        .run();
+    }
+  }
+
+  if (sets.length === 0 && parsed.data.instalacionesIds === undefined) {
+    return c.json({ message: "Sin cambios solicitados" });
+  }
 
   await registrarAuditoria({
     db: c.env.DB,
@@ -240,7 +307,19 @@ usuariosRouter.patch("/api/usuarios/:id", async (c) => {
     detalles: parsed.data,
   });
 
-  return c.json({ success: true, message: "Usuario actualizado" });
+  const { results: asignadas } = await c.env.DB.prepare(`
+    SELECT i.id, i.nombre
+    FROM asignaciones_operadores a
+    JOIN instalaciones i ON a.instalacionId = i.id
+    WHERE a.usuarioId = ?
+    ORDER BY i.nombre ASC
+  `).bind(id).all<{ id: string; nombre: string }>();
+
+  return c.json({
+    success: true,
+    message: "Usuario y asignaciones actualizados exitosamente",
+    instalaciones: asignadas || [],
+  });
 });
 
 // 7. Resetear contraseña administrativamente
