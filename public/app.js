@@ -559,14 +559,23 @@ async function cargarDashboard() {
   try {
     // 1. KPIs
     const kpis = await window.api.dashboard.getKpis();
-    document.getElementById("kpiTotalInstalaciones").innerText = kpis.totalInstalaciones;
-    document.getElementById("kpiTotalMedidores").innerText = kpis.totalMedidores;
-    document.getElementById("kpiTotalLecturas").innerText = kpis.totalLecturas;
+    if (document.getElementById("kpiTotalInstalaciones")) {
+      document.getElementById("kpiTotalInstalaciones").innerText = kpis.totalInstalaciones ?? 0;
+    }
+    if (document.getElementById("kpiTotalMedidores")) {
+      document.getElementById("kpiTotalMedidores").innerText = kpis.totalMedidores ?? 0;
+    }
+    if (document.getElementById("kpiTotalLecturas")) {
+      document.getElementById("kpiTotalLecturas").innerText = kpis.totalLecturas ?? 0;
+    }
 
     const pillsContainer = document.getElementById("kpiRecursosPills");
-    pillsContainer.innerHTML = Object.entries(kpis.medidoresPorRecurso)
-      .map(([rec, cant]) => `<span class="kpi-tag">${rec}: ${cant}</span>`)
-      .join("");
+    if (pillsContainer) {
+      const entries = kpis.medidoresPorRecurso ? Object.entries(kpis.medidoresPorRecurso) : [];
+      pillsContainer.innerHTML = entries
+        .map(([rec, cant]) => `<span class="kpi-tag">${rec}: ${cant}</span>`)
+        .join("");
+    }
 
     // 2. Medidores Desatendidos (+24h)
     const desatendidos = await window.api.dashboard.getDesatendidos(24);
