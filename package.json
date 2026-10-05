@@ -1,0 +1,30 @@
+{
+  "name": "sistema-medidores-cloudflare",
+  "version": "0.1.0",
+  "description": "Sistema de gestión y auditoría de medidores en Cloudflare Workers y D1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "cf-typegen": "wrangler types",
+    "prisma:generate": "prisma generate",
+    "db:migrate:local": "wrangler d1 migrations apply sistema-medidores-db --local -y",
+    "db:migrate:remote": "wrangler d1 migrations apply sistema-medidores-db --remote -y",
+    "db:seed:local": "wrangler d1 execute sistema-medidores-db --local --file=./migrations/0002_seed.sql"
+  },
+  "dependencies": {
+    "@hono/zod-validator": "^0.4.3",
+    "@prisma/adapter-d1": "^6.4.1",
+    "@prisma/client": "^6.4.1",
+    "hono": "^4.7.2",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250224.0",
+    "@types/node": "^26.6.4",
+    "prisma": "^6.4.1",
+    "typescript": "^5.8.2",
+    "wrangler": "^3.111.0"
+  }
+}

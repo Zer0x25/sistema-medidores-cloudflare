@@ -1,0 +1,1811 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="dark light">
+  <title>Sistema Medidores — Aurora Design System</title>
+  
+  <!-- Script Anti-Destello (Zero-FOUC) ADR 0002 -->
+  <script>
+    (function() {
+      try {
+        const saved = localStorage.getItem('medidores-theme');
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        const theme = (saved === 'light' || saved === 'dark') ? saved : (prefersDark ? 'dark' : 'light');
+        document.documentElement.setAttribute('data-theme', theme);
+        document.documentElement.style.colorScheme = theme;
+      } catch (e) {}
+    })();
+  </script>
+
+  <!-- Fuentes Tipográficas del Design System -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  
+  <!-- PWA & Metadata (Hito 7) -->
+  <link rel="manifest" href="/manifest.webmanifest">
+  <meta name="theme-color" content="#0ea5e9">
+  <link rel="icon" type="image/svg+xml" href="/icon.svg">
+  
+  <link rel="stylesheet" href="/app.css">
+</head>
+<body class="not-authenticated">
+  <!-- Header & Barra de Navegación Principal -->
+  <header class="navbar" id="mainNavbar">
+    <div class="navbar-container">
+      <div class="brand-group">
+        <div class="brand-logo" aria-hidden="true">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+          </svg>
+        </div>
+        <div class="brand-text">
+          <span class="brand-title">Sistema Medidores</span>
+          <span class="brand-subtitle">Control Energético &amp; Fluidos</span>
+        </div>
+      </div>
+
+      <!-- Conmutador de Roles & Módulos -->
+      <nav class="role-switcher" id="roleSwitcher" aria-label="Selector de Módulo">
+        <button class="role-btn active" id="tabAdminBtn" onclick="switchRole('admin')">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="7" height="7"/>
+            <rect x="14" y="3" width="7" height="7"/>
+            <rect x="14" y="14" width="7" height="7"/>
+            <rect x="3" y="14" width="7" height="7"/>
+          </svg>
+          Dashboard
+        </button>
+        <button class="role-btn" id="tabReportesBtn" onclick="switchRole('reportes')">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+            <line x1="16" y1="13" x2="8" y2="13"/>
+            <line x1="16" y1="17" x2="8" y2="17"/>
+          </svg>
+          Reportes &amp; Facturas
+        </button>
+        <button class="role-btn" id="tabAlertasBtn" onclick="switchRole('alertas')">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+            <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+          </svg>
+          Alertas
+          <span id="navAlertasBadge" class="badge badge-amber" style="display:none; font-size: 0.7rem; padding: 0.1rem 0.4rem; margin-left: 0.25rem;">0</span>
+        </button>
+        <button class="role-btn" id="tabMantenimientoBtn" onclick="switchRole('mantenimiento')">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
+          </svg>
+          Mantenimiento
+        </button>
+        <button class="role-btn" id="tabUsuariosBtn" onclick="switchRole('usuarios')">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+            <circle cx="9" cy="7" r="4"/>
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+          </svg>
+          Usuarios
+        </button>
+        <button class="role-btn" id="tabAuditoriaBtn" onclick="switchRole('auditoria')">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+          </svg>
+          Auditoría
+        </button>
+        <button class="role-btn" id="tabWebhooksBtn" onclick="switchRole('webhooks')">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+            <polyline points="15 3 21 3 21 9"/>
+            <line x1="10" y1="14" x2="21" y2="3"/>
+          </svg>
+          Webhooks
+        </button>
+        <button class="role-btn" id="tabNotificacionesBtn" onclick="switchRole('notificaciones')">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+            <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+          </svg>
+          Notificaciones
+        </button>
+        <button class="role-btn" id="tabOperadorBtn" onclick="switchRole('operador')">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+            <circle cx="9" cy="7" r="4"/>
+            <path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>
+          </svg>
+          Modo Terreno
+        </button>
+      </nav>
+
+      <!-- Selector Rápido de Roles RBAC (ADR 0002 / Spec-005) -->
+      <div class="role-simulator-bar" id="roleSimulatorBar" aria-label="Simular usuario por rol">
+        <span class="simulator-label">Simular:</span>
+        <button class="btn btn-sm btn-outline active" id="quickRoleAdmin" onclick="loginComo('ADMIN')" title="Conectar como Administrador Global">
+          👑 Admin
+        </button>
+        <button class="btn btn-sm btn-outline" id="quickRoleSupervisor" onclick="loginComo('SUPERVISOR')" title="Conectar como Supervisor Planta Norte">
+          🛡️ Supervisor
+        </button>
+        <button class="btn btn-sm btn-outline" id="quickRoleOperador" onclick="loginComo('OPERADOR')" title="Conectar como Operador Terreno">
+          👷 Operador
+        </button>
+      </div>
+
+      <!-- Píldora de Usuario Activo -->
+      <div id="navUserPill"></div>
+
+      <!-- Acciones de Cabecera: Selector de Tema & Demo Seed -->
+      <div class="header-actions">
+        <!-- Botón de Conmutación Modo Claro / Oscuro -->
+        <button class="theme-toggle-btn" id="themeToggleBtn" onclick="window.Theme.toggle()" aria-label="Cambiar tema" title="Alternar modo Claro / Oscuro">
+          <!-- Sol (se muestra en modo oscuro) -->
+          <svg class="theme-icon-sun" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="5"/>
+            <line x1="12" y1="1" x2="12" y2="3"/>
+            <line x1="12" y1="21" x2="12" y2="23"/>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+            <line x1="1" y1="12" x2="3" y2="12"/>
+            <line x1="21" y1="12" x2="23" y2="12"/>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+          </svg>
+          <!-- Luna (se muestra en modo claro) -->
+          <svg class="theme-icon-moon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+          </svg>
+        </button>
+
+        <button class="btn btn-secondary btn-sm" id="btnSeedDemo" onclick="seedDemoData()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+          </svg>
+          Cargar Datos Demo
+        </button>
+        <div id="networkStatusBadge" class="network-badge online" title="Conexión activa con el servidor">
+          <span class="network-dot"></span>
+          <span>En línea</span>
+        </div>
+        <button id="syncQueueBtn" class="btn btn-sm btn-outline sync-queue-btn" style="display:none;" onclick="window.syncManager.sincronizar()" title="Sincronizar lecturas pendientes">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
+          </svg>
+          Sincronizar (<span id="syncQueueCount">0</span>)
+        </button>
+        <button class="mobile-menu-toggle" id="btnMobileMenuToggle" aria-label="Abrir menú de navegación" aria-expanded="false" aria-controls="mobileMenuDrawer" onclick="window.toggleMobileMenu()">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="3" y1="12" x2="21" y2="12"></line>
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <line x1="3" y1="18" x2="21" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ============================================================== -->
+  <!-- MENÚ MÓVIL Y DRAWER ACCESIBLE (ADR 0010 / Hito 13) -->
+  <!-- ============================================================== -->
+  <div class="mobile-drawer-backdrop" id="mobileDrawerBackdrop" onclick="window.closeMobileMenu()"></div>
+  <aside class="mobile-drawer" id="mobileMenuDrawer" aria-hidden="true" role="dialog" aria-modal="true" aria-label="Menú principal de navegación">
+    <div class="mobile-drawer-header">
+      <div class="brand-group">
+        <div class="brand-logo" style="width:32px; height:32px;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+          </svg>
+        </div>
+        <span class="mobile-drawer-title" style="font-size: 1.05rem; font-weight: 700; color: var(--text-primary);">Menú Medidores</span>
+      </div>
+      <button class="btn btn-icon btn-ghost" id="btnCloseMobileMenu" onclick="window.closeMobileMenu()" aria-label="Cerrar menú">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+    <div class="mobile-drawer-body">
+      <!-- Usuario Activo en Móvil -->
+      <div class="mobile-user-section" id="mobileUserSection"></div>
+
+      <!-- Navegación por Módulos -->
+      <nav class="mobile-nav-list" aria-label="Módulos del sistema">
+        <button class="mobile-nav-btn active" id="mobileTabAdminBtn" onclick="switchRole('admin'); window.closeMobileMenu();">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="7" height="7"/>
+            <rect x="14" y="3" width="7" height="7"/>
+            <rect x="14" y="14" width="7" height="7"/>
+            <rect x="3" y="14" width="7" height="7"/>
+          </svg>
+          Dashboard
+        </button>
+        <button class="mobile-nav-btn" id="mobileTabReportesBtn" onclick="switchRole('reportes'); window.closeMobileMenu();">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+            <line x1="16" y1="13" x2="8" y2="13"/>
+            <line x1="16" y1="17" x2="8" y2="17"/>
+          </svg>
+          Reportes &amp; Facturas
+        </button>
+        <button class="mobile-nav-btn" id="mobileTabAlertasBtn" onclick="switchRole('alertas'); window.closeMobileMenu();">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+            <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+          </svg>
+          Alertas
+        </button>
+        <button class="mobile-nav-btn" id="mobileTabMantenimientoBtn" onclick="switchRole('mantenimiento'); window.closeMobileMenu();">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
+          </svg>
+          Mantenimiento
+        </button>
+        <button class="mobile-nav-btn" id="mobileTabUsuariosBtn" onclick="switchRole('usuarios'); window.closeMobileMenu();">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+            <circle cx="9" cy="7" r="4"/>
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+          </svg>
+          Usuarios
+        </button>
+        <button class="mobile-nav-btn" id="mobileTabAuditoriaBtn" onclick="switchRole('auditoria'); window.closeMobileMenu();">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+          </svg>
+          Auditoría
+        </button>
+        <button class="mobile-nav-btn" id="mobileTabWebhooksBtn" onclick="switchRole('webhooks'); window.closeMobileMenu();">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+            <polyline points="15 3 21 3 21 9"/>
+            <line x1="10" y1="14" x2="21" y2="3"/>
+          </svg>
+          Webhooks
+        </button>
+        <button class="mobile-nav-btn" id="mobileTabNotificacionesBtn" onclick="switchRole('notificaciones'); window.closeMobileMenu();">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+            <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+          </svg>
+          Notificaciones
+        </button>
+        <button class="mobile-nav-btn" id="mobileTabOperadorBtn" onclick="switchRole('operador'); window.closeMobileMenu();">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+            <circle cx="9" cy="7" r="4"/>
+            <path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>
+          </svg>
+          Modo Terreno
+        </button>
+      </nav>
+
+      <!-- Simulador de Roles para Móvil -->
+      <div class="mobile-simulator-section">
+        <span class="simulator-label">Simular Usuario (RBAC):</span>
+        <div class="mobile-simulator-buttons">
+          <button class="btn btn-sm btn-outline mobile-simulator-btn active" id="mobileRoleAdmin" onclick="loginComo('ADMIN'); window.closeMobileMenu();">
+            👑 Admin Global
+          </button>
+          <button class="btn btn-sm btn-outline mobile-simulator-btn" id="mobileRoleSupervisor" onclick="loginComo('SUPERVISOR'); window.closeMobileMenu();">
+            🛡️ Supervisor Planta
+          </button>
+          <button class="btn btn-sm btn-outline mobile-simulator-btn" id="mobileRoleOperador" onclick="loginComo('OPERADOR'); window.closeMobileMenu();">
+            👷 Operador Terreno
+          </button>
+        </div>
+      </div>
+
+      <!-- Acciones Adicionales -->
+      <div class="mobile-drawer-actions">
+        <button class="btn btn-outline" onclick="window.Theme.toggle()" style="width: 100%; justify-content: center; min-height: 44px;">
+          🌓 Alternar Modo Claro / Oscuro
+        </button>
+        <button class="btn btn-secondary" onclick="seedDemoData(); window.closeMobileMenu();" style="width: 100%; justify-content: center; min-height: 44px;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+          </svg>
+          Recargar Datos Demo
+        </button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Contenedor Principal de Vistas -->
+  <main class="main-content">
+
+    <!-- ============================================================== -->
+    <!-- VISTA 0: INICIO DE SESIÓN FORMAL (ADR 0012 / Spec feat-018)    -->
+    <!-- ============================================================== -->
+    <section class="view-panel active" id="viewLogin" aria-labelledby="headingLogin">
+      <div class="login-wrapper">
+        <!-- Botón flotante para alternar tema en pantalla de login -->
+        <button class="theme-toggle-btn login-theme-toggle" id="loginThemeToggleBtn" onclick="window.Theme.toggle()" aria-label="Cambiar tema" title="Alternar modo Claro / Oscuro">
+          <!-- Sol (se muestra en modo oscuro) -->
+          <svg class="theme-icon-sun" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="5"/>
+            <line x1="12" y1="12" x2="12" y2="3"/>
+            <line x1="12" y1="21" x2="12" y2="23"/>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+            <line x1="1" y1="12" x2="3" y2="12"/>
+            <line x1="21" y1="12" x2="23" y2="12"/>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+          </svg>
+          <!-- Luna (se muestra en modo claro) -->
+          <svg class="theme-icon-moon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+          </svg>
+        </button>
+
+        <div class="login-card">
+          <div class="login-header">
+            <div class="login-logo-icon">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+                <circle cx="12" cy="12" r="4"/>
+              </svg>
+            </div>
+            <h1 class="login-title" id="headingLogin">Iniciar Sesión</h1>
+            <p class="login-subtitle">Sistema Medidores · Telemetría y Gestión Metrológica</p>
+          </div>
+
+          <!-- Alerta Inline de Error -->
+          <div id="loginErrorAlert" class="login-alert" style="display: none;" role="alert">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="12" y1="8" x2="12" y2="12"/>
+              <line x1="12" y1="16" x2="12.01" y2="16"/>
+            </svg>
+            <span id="loginErrorMessage">Credenciales incorrectas</span>
+          </div>
+
+          <form id="formLogin" class="login-form" onsubmit="handleLoginSubmit(event)">
+            <div class="form-group">
+              <label for="loginEmail" class="form-label">Correo Electrónico</label>
+              <input 
+                type="email" 
+                id="loginEmail" 
+                name="email" 
+                class="form-input" 
+                placeholder="usuario@medidores.cl" 
+                autocomplete="username" 
+                required 
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="loginPassword" class="form-label">Contraseña</label>
+              <div class="password-input-wrapper">
+                <input 
+                  type="password" 
+                  id="loginPassword" 
+                  name="password" 
+                  class="form-input" 
+                  placeholder="Tu contraseña" 
+                  autocomplete="current-password" 
+                  required 
+                />
+                <button 
+                  type="button" 
+                  class="btn-toggle-password" 
+                  id="btnTogglePassword" 
+                  onclick="toggleLoginPasswordVisibility()" 
+                  aria-label="Mostrar u ocultar contraseña" 
+                  title="Mostrar/ocultar contraseña"
+                >
+                  👁️
+                </button>
+              </div>
+            </div>
+
+            <button type="submit" id="btnLoginSubmit" class="btn btn-primary btn-login-submit">
+              <span id="btnLoginText">Ingresar al Sistema</span>
+              <span id="btnLoginSpinner" class="spinner" style="display: none; margin-left: 0.5rem;"></span>
+            </button>
+          </form>
+
+          <!-- Acceso Rápido de Desarrollo (solo en devRoleSwitcher) -->
+          <div id="loginDevQuickAccess" class="login-dev-box" style="display: none;">
+            <span class="dev-box-title">⚡ Acceso Rápido de Desarrollo (Dev):</span>
+            <div class="dev-quick-buttons">
+              <button type="button" class="btn btn-sm btn-outline" id="devQuickAdmin" onclick="autofillAndLogin('admin@medidores.cl', 'demo1234')">
+                👑 Admin
+              </button>
+              <button type="button" class="btn btn-sm btn-outline" id="devQuickSupervisor" onclick="autofillAndLogin('supervisor@medidores.cl', 'demo1234')">
+                🛡️ Supervisor
+              </button>
+              <button type="button" class="btn btn-sm btn-outline" id="devQuickOperador" onclick="autofillAndLogin('operador@medidores.cl', 'demo1234')">
+                👷 Operador
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================== -->
+    <!-- VISTA 1: DASHBOARD ADMINISTRADOR -->
+    <!-- ============================================================== -->
+    <section class="view-panel" id="viewAdmin" aria-labelledby="headingAdmin">
+      <div class="view-header">
+        <div>
+          <h1 class="view-title" id="headingAdmin">Tablero Ejecutivo de Medición</h1>
+          <p class="view-desc">Supervisión en tiempo real del parque de telemetría, alertas operativas y consumos netos auditados.</p>
+        </div>
+        <div class="view-actions">
+          <button class="btn btn-primary" id="btnOpenModalMedidor" onclick="openModal('modalMedidor')">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 5v14M5 12h14"/>
+            </svg>
+            Nuevo Medidor
+          </button>
+          <button class="btn btn-outline" id="btnOpenModalInstalacion" onclick="openModal('modalInstalacion')">
+            Nueva Instalación
+          </button>
+          <button class="btn btn-outline" id="btnOpenModalTipo" onclick="openModal('modalTipo')">
+            Nuevo Tipo
+          </button>
+        </div>
+      </div>
+
+      <!-- KPI Grid -->
+      <div class="kpi-grid">
+        <div class="kpi-card" id="kpiCardInstalaciones">
+          <div class="kpi-card-header">
+            <div class="kpi-info">
+              <span class="kpi-label">Instalaciones Activas</span>
+              <span class="kpi-value" id="kpiTotalInstalaciones">--</span>
+            </div>
+            <div class="kpi-icon icon-blue">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M3 21h18M9 8h1M9 12h1M9 16h1M14 8h1M14 12h1M14 16h1M5 21V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16"/>
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <div class="kpi-card" id="kpiCardMedidores">
+          <div class="kpi-card-header">
+            <div class="kpi-info">
+              <span class="kpi-label">Medidores Físicos</span>
+              <span class="kpi-value" id="kpiTotalMedidores">--</span>
+            </div>
+            <div class="kpi-icon icon-emerald">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <path d="m14 14-4-4M12 6v2M12 16v2M6 12h2M16 12h2"/>
+              </svg>
+            </div>
+          </div>
+          <div class="kpi-tags" id="kpiRecursosPills"></div>
+        </div>
+
+        <div class="kpi-card" id="kpiCardLecturas">
+          <div class="kpi-card-header">
+            <div class="kpi-info">
+              <span class="kpi-label">Mediciones Totales</span>
+              <span class="kpi-value" id="kpiTotalLecturas">--</span>
+            </div>
+            <div class="kpi-icon icon-indigo">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+                <line x1="16" y1="13" x2="8" y2="13"/>
+                <line x1="16" y1="17" x2="8" y2="17"/>
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <div class="kpi-card" id="kpiCardDesatendidos">
+          <div class="kpi-card-header">
+            <div class="kpi-info">
+              <span class="kpi-label">Desatendidos (>24h)</span>
+              <span class="kpi-value" id="kpiTotalDesatendidos" style="color: var(--status-warning);">--</span>
+            </div>
+            <div class="kpi-icon icon-amber">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/>
+                <line x1="12" y1="9" x2="12" y2="13"/>
+                <line x1="12" y1="17" x2="12.01" y2="17"/>
+              </svg>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Columnas del Tablero: Alertas & Consumos -->
+      <div class="dashboard-columns">
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">
+              <span>⚠️ Medidores que Requieren Lectura</span>
+            </h2>
+            <span class="badge badge-amber" id="badgeCountDesatendidos">0 pendientes</span>
+          </div>
+          <div class="desatendidos-list" id="listaDesatendidos">
+            <div class="empty-state">No hay medidores con retraso en lecturas.</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">📈 Consumo Acumulado por Instalación</h2>
+          </div>
+          <div class="consumo-list" id="listaConsumos">
+            <div class="empty-state">No hay consumos acumulados registrados aún.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Feed de Actividad Reciente de Telemetría -->
+      <div class="card mt-6">
+        <div class="card-header">
+          <h2 class="card-title">🕒 Últimas Mediciones Ingresadas al Sistema</h2>
+          <button class="btn btn-ghost btn-sm" onclick="cargarDashboard()">Refrescar</button>
+        </div>
+        <div id="listaActividadReciente">
+          <div class="empty-state">Cargando mediciones recientes...</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================== -->
+    <!-- VISTA 2: MODO TERRENO (OPERADOR) -->
+    <!-- ============================================================== -->
+    <section class="view-panel" id="viewOperador" aria-labelledby="headingOperador">
+      <div class="view-header">
+        <div>
+          <h1 class="view-title" id="headingOperador">Ingreso de Lecturas en Terreno</h1>
+          <p class="view-desc">Selecciona tu instalación asignada para capturar las mediciones del turno con validación instantánea.</p>
+        </div>
+      </div>
+
+      <!-- Selector de Instalación Asignada -->
+      <div class="operator-facility-selector">
+        <div class="form-group">
+          <label for="selectOperadorInstalacion" class="form-label">Instalación Asignada:</label>
+          <select id="selectOperadorInstalacion" class="form-select" onchange="onOperadorInstalacionChange()">
+            <option value="">Cargando instalaciones asignadas...</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Grid de Fichas de Medidor (Reutilizable) -->
+      <div class="meters-grid" id="gridMedidoresOperador">
+        <div class="empty-state">Selecciona una instalación para ver los medidores a tu cargo.</div>
+      </div>
+    </section>
+
+    <!-- ============================================================== -->
+    <!-- VISTA 3: GESTIÓN DE USUARIOS (ADMIN) -->
+    <!-- ============================================================== -->
+    <section class="view-panel" id="viewUsuarios" aria-labelledby="headingUsuarios">
+      <div class="view-header">
+        <div>
+          <h1 class="view-title" id="headingUsuarios">Gestión Integral de Usuarios y Permisos</h1>
+          <p class="view-desc">Administra el directorio de usuarios, asignación de sedes operativas y restablecimiento de contraseñas.</p>
+        </div>
+        <div class="view-actions">
+          <button class="btn btn-primary" id="btnOpenModalNuevoUsuario" onclick="openModal('modalNuevoUsuario')">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+              <circle cx="9" cy="7" r="4"/>
+              <line x1="19" y1="8" x2="19" y2="14"/>
+              <line x1="16" y1="11" x2="22" y2="11"/>
+            </svg>
+            Nuevo Usuario
+          </button>
+        </div>
+      </div>
+
+      <div class="card mt-6">
+        <div class="card-header">
+          <h2 class="card-title">👥 Directorio de Usuarios</h2>
+          <button class="btn btn-ghost btn-sm" id="btnRefrescarUsuarios" onclick="cargarUsuariosAdmin()">Refrescar</button>
+        </div>
+        <div class="table-responsive">
+          <table class="data-table" id="tablaUsuarios">
+            <thead>
+              <tr>
+                <th>Usuario</th>
+                <th>Email</th>
+                <th>Rol</th>
+                <th>Estado</th>
+                <th>Instalaciones Asignadas</th>
+                <th style="text-align: right;">Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="tbodyUsuarios">
+              <tr>
+                <td colspan="6" class="empty-state">Cargando directorio de usuarios...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================== -->
+    <!-- VISTA 4: REPORTES & CONCILIACIÓN DE FACTURAS (FEAT-007) -->
+    <!-- ============================================================== -->
+    <section class="view-panel" id="viewReportes" aria-labelledby="headingReportes">
+      <div class="view-header">
+        <div>
+          <h1 class="view-title" id="headingReportes">Consumos Consolidados &amp; Conciliación de Facturas</h1>
+          <p class="view-desc">Auditoría de consumos netos por sede, exportación normalizada a CSV y conciliación metrológica con facturas de servicios.</p>
+        </div>
+        <div class="view-actions">
+          <button class="btn btn-secondary" onclick="exportarReporteCSV()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+            </svg>
+            Exportar CSV
+          </button>
+          <button class="btn btn-primary" onclick="openModal('modalRegistrarFactura')">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              <line x1="12" y1="11" x2="12" y2="17"/>
+              <line x1="9" y1="14" x2="15" y2="14"/>
+            </svg>
+            + Registrar Factura
+          </button>
+        </div>
+      </div>
+
+      <!-- Barra de Filtros de Reportes -->
+      <div class="card mt-6" style="padding: 1.25rem;">
+        <div class="reports-filter-grid">
+          <div class="form-group" style="margin-bottom: 0;">
+            <label for="filtroReporteSede" class="form-label">Sede / Instalación:</label>
+            <select id="filtroReporteSede" class="form-select">
+              <option value="">Todas las sedes</option>
+            </select>
+          </div>
+          <div class="form-group" style="margin-bottom: 0;">
+            <label for="filtroReporteRecurso" class="form-label">Tipo de Recurso:</label>
+            <select id="filtroReporteRecurso" class="form-select">
+              <option value="">Todos los recursos</option>
+              <option value="AGUA">Agua Potable</option>
+              <option value="LUZ">Electricidad</option>
+              <option value="GAS">Gas</option>
+              <option value="PETROLEO">Combustible / Diésel</option>
+            </select>
+          </div>
+          <div class="form-group" style="margin-bottom: 0;">
+            <label for="filtroReporteInicio" class="form-label">Fecha Inicio:</label>
+            <input type="date" id="filtroReporteInicio" class="form-input">
+          </div>
+          <div class="form-group" style="margin-bottom: 0;">
+            <label for="filtroReporteFin" class="form-label">Fecha Fin:</label>
+            <input type="date" id="filtroReporteFin" class="form-input">
+          </div>
+          <div style="display: flex; gap: 0.5rem;">
+            <button class="btn btn-primary" onclick="cargarReporteConsumos()" style="flex: 1;">
+              🔍 Filtrar
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tabla 1: Consumo Neto Consolidado por Medidor -->
+      <div class="card mt-6">
+        <div class="card-header">
+          <h2 class="card-title">📊 Consumo Neto Consolidado por Medidor</h2>
+          <span class="badge badge-blue" id="badgeTotalReporteMedidores">0 medidores</span>
+        </div>
+        <div class="table-responsive">
+          <table class="data-table" id="tablaReporteConsumos">
+            <thead>
+              <tr>
+                <th>Sede</th>
+                <th>Medidor</th>
+                <th>Recurso</th>
+                <th>Unidad</th>
+                <th style="text-align: right;">Lectura Inicial</th>
+                <th style="text-align: right;">Lectura Final</th>
+                <th style="text-align: right;">Consumo Neto</th>
+                <th style="text-align: center;">Muestras</th>
+              </tr>
+            </thead>
+            <tbody id="tbodyReporteConsumos">
+              <tr>
+                <td colspan="8" class="empty-state">Selecciona los filtros y presiona Filtrar.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Tabla 2: Auditoría y Conciliación contra Facturas -->
+      <div class="card mt-6">
+        <div class="card-header">
+          <h2 class="card-title">🧾 Auditoría &amp; Conciliación de Facturas de Proveedores</h2>
+          <button class="btn btn-ghost btn-sm" onclick="cargarFacturasReportes()">Refrescar</button>
+        </div>
+        <div class="table-responsive">
+          <table class="data-table" id="tablaReporteFacturas">
+            <thead>
+              <tr>
+                <th>N° Factura</th>
+                <th>Sede</th>
+                <th>Recurso</th>
+                <th>Período Facturación</th>
+                <th style="text-align: right;">Facturado</th>
+                <th style="text-align: right;">Medido Sistema</th>
+                <th style="text-align: right;">Diferencia</th>
+                <th style="text-align: right;">% Desvío</th>
+                <th>Estado Conciliación</th>
+              </tr>
+            </thead>
+            <tbody id="tbodyReporteFacturas">
+              <tr>
+                <td colspan="9" class="empty-state">Cargando facturas registradas...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================== -->
+    <!-- VISTA 5: SISTEMA DE ALERTAS & ANOMALÍAS (FEAT-008) -->
+    <!-- ============================================================== -->
+    <section class="view-panel" id="viewAlertas" aria-labelledby="headingAlertas">
+      <div class="view-header">
+        <div>
+          <h1 class="view-title" id="headingAlertas">Centro de Alertas &amp; Anomalías de Telemetría</h1>
+          <p class="view-desc">Detección automática de consumos atípicos, fugas probables y medidores desconectados o sin reporte (+48h).</p>
+        </div>
+        <div class="view-actions">
+          <button class="btn btn-secondary" onclick="openModalConfigurarReglas()">
+            ⚙️ Ver / Crear Reglas
+          </button>
+          <button class="btn btn-primary" onclick="evaluarAlertasEnVivo()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8"/>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+            Evaluar Reglas Ahora
+          </button>
+        </div>
+      </div>
+
+      <!-- KPIs de Alertas -->
+      <div class="kpi-grid mt-6">
+        <div class="kpi-card">
+          <div class="kpi-card-header">
+            <div class="kpi-info">
+              <span class="kpi-label">Incidentes Abiertos</span>
+              <span class="kpi-value" id="kpiAlertasAbiertos" style="color: var(--accent-primary);">--</span>
+            </div>
+            <div class="kpi-icon icon-blue">⚠️</div>
+          </div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-card-header">
+            <div class="kpi-info">
+              <span class="kpi-label">Alertas Críticas</span>
+              <span class="kpi-value" id="kpiAlertasCriticos" style="color: var(--status-danger);">--</span>
+            </div>
+            <div class="kpi-icon icon-rose">🚨</div>
+          </div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-card-header">
+            <div class="kpi-info">
+              <span class="kpi-label">Advertencias</span>
+              <span class="kpi-value" id="kpiAlertasAdvertencias" style="color: var(--status-warning);">--</span>
+            </div>
+            <div class="kpi-icon icon-amber">⚡</div>
+          </div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-card-header">
+            <div class="kpi-info">
+              <span class="kpi-label">Incidentes Resueltos</span>
+              <span class="kpi-value" id="kpiAlertasResueltos" style="color: var(--status-success);">--</span>
+            </div>
+            <div class="kpi-icon icon-emerald">✓</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tabla de Incidentes de Alerta -->
+      <div class="card mt-6">
+        <div class="card-header">
+          <h2 class="card-title">🔔 Registro de Incidentes Operativos</h2>
+          <div class="header-filters">
+            <select id="filtroAlertasEstado" class="form-select filter-select" onchange="cargarAlertasIncidentes()">
+              <option value="">Todos los estados</option>
+              <option value="ABIERTO" selected>Solo Abiertos</option>
+              <option value="EN_REVISION">En Revisión</option>
+              <option value="RESUELTO">Resueltos</option>
+            </select>
+            <button class="btn btn-ghost btn-sm" onclick="cargarAlertasIncidentes()">Refrescar</button>
+          </div>
+        </div>
+        <div class="table-responsive">
+          <table class="data-table" id="tablaAlertasIncidentes">
+            <thead>
+              <tr>
+                <th>Fecha Detección</th>
+                <th>Sede</th>
+                <th>Medidor</th>
+                <th>Tipo Anomalía</th>
+                <th>Severidad</th>
+                <th>Diagnóstico / Mensaje</th>
+                <th>Estado</th>
+                <th style="text-align: right;">Acción</th>
+              </tr>
+            </thead>
+            <tbody id="tbodyAlertasIncidentes">
+              <tr>
+                <td colspan="8" class="empty-state">Cargando incidentes...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================== -->
+    <!-- VISTA 6: MANTENIMIENTO & CALIBRACIÓN (FEAT-009) -->
+    <!-- ============================================================== -->
+    <section class="view-panel" id="viewMantenimiento" aria-labelledby="headingMantenimiento">
+      <div class="view-header">
+        <div>
+          <h1 class="view-title" id="headingMantenimiento">Mantenimiento, Calibración &amp; Control de Precintos</h1>
+          <p class="view-desc">Bitácora física de intervenciones técnicas, trazabilidad de precintos de seguridad y registro de bajas o reemplazos.</p>
+        </div>
+        <div class="view-actions">
+          <button class="btn btn-primary" id="btnOpenModalMantenimiento" onclick="openModalRegistrarMantenimiento()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
+            </svg>
+            + Registrar Mantenimiento
+          </button>
+        </div>
+      </div>
+
+      <!-- Ficha de Consulta de Medidor & Historial Propio -->
+      <div class="card mt-6">
+        <div class="card-header">
+          <h2 class="card-title">🔍 Ficha Metrológica por Medidor</h2>
+          <div class="header-filters">
+            <label for="selectFichaMedidor" class="form-label" style="margin-bottom:0; font-size:0.85rem;">Medidor:</label>
+            <select id="selectFichaMedidor" class="form-select filter-select" onchange="consultarFichaMedidor()">
+              <option value="">Selecciona un medidor...</option>
+            </select>
+          </div>
+        </div>
+        <div id="contenedorFichaMedidor" style="padding: 1rem;">
+          <div class="empty-state">Selecciona un medidor para inspeccionar su ficha técnica y bitácora.</div>
+        </div>
+      </div>
+
+      <!-- Bitácora Histórica General -->
+      <div class="card mt-6">
+        <div class="card-header">
+          <h2 class="card-title">📜 Bitácora General de Intervenciones Físicas</h2>
+          <button class="btn btn-ghost btn-sm" onclick="cargarMantenimientosBitacora()">Refrescar</button>
+        </div>
+        <div class="table-responsive">
+          <table class="data-table" id="tablaMantenimientosBitacora">
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th>Medidor</th>
+                <th>Sede</th>
+                <th>Tipo Intervención</th>
+                <th>Técnico Responsable</th>
+                <th>Precinto Ant.</th>
+                <th>Precinto Nuevo</th>
+                <th>Próx. Calibración</th>
+                <th>Detalles / Observaciones</th>
+              </tr>
+            </thead>
+            <tbody id="tbodyMantenimientosBitacora">
+              <tr>
+                <td colspan="9" class="empty-state">Cargando bitácora de intervenciones...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================== -->
+    <!-- VISTA 7: PISTA DE AUDITORÍA & SEGURIDAD (FEAT-011 / HITO 8) -->
+    <!-- ============================================================== -->
+    <section class="view-panel" id="viewAuditoria" aria-labelledby="headingAuditoria">
+      <div class="view-header">
+        <div>
+          <h1 class="view-title" id="headingAuditoria">Pista de Auditoría &amp; Seguridad Operativa</h1>
+          <p class="view-desc">Bitácora inmutable de eventos críticos: cambios de rol, restablecimientos administrativos, bajas de equipos y cambios de precintos.</p>
+        </div>
+        <div class="view-actions">
+          <button class="btn btn-secondary" onclick="cargarEventosAuditoria()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+            </svg>
+            Refrescar
+          </button>
+          <button class="btn btn-primary" id="btnGenerarBackup" onclick="ejecutarBackupSistema()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+              <polyline points="17 21 17 13 7 13 7 21"/>
+              <polyline points="7 3 7 8 15 8"/>
+            </svg>
+            Generar Respaldo
+          </button>
+        </div>
+      </div>
+
+      <div class="card mt-6">
+        <div class="card-header">
+          <h2 class="card-title">🛡️ Eventos Críticos Registrados</h2>
+          <div class="filters-row header-filters">
+            <label for="filtroAuditoriaAccion" style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0;">Filtrar Acción:</label>
+            <select class="form-input form-select filter-select" id="filtroAuditoriaAccion" onchange="cargarEventosAuditoria()">
+              <option value="">Todas las acciones</option>
+              <option value="CAMBIO_ROL">Cambios de Rol</option>
+              <option value="RESET_PASSWORD_ADMIN">Reset de Contraseña</option>
+              <option value="BAJA_MEDIDOR">Baja de Medidor</option>
+              <option value="CAMBIO_PRECINTO">Cambio de Precinto</option>
+              <option value="LOGIN_FALLIDO">Login Fallido</option>
+            </select>
+          </div>
+        </div>
+        <div class="table-responsive">
+          <table class="data-table" id="tablaAuditoria">
+            <thead>
+              <tr>
+                <th>Fecha / Hora (UTC)</th>
+                <th>Acción</th>
+                <th>Entidad</th>
+                <th>ID Referencia</th>
+                <th>Detalles de Trazabilidad</th>
+                <th>IP Origen</th>
+              </tr>
+            </thead>
+            <tbody id="tbodyAuditoria">
+              <tr>
+                <td colspan="6" class="empty-state">Cargando bitácora de auditoría...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================== -->
+    <!-- VISTA 8: INTEGRACIONES & WEBHOOKS (FEAT-012 / HITO 9) -->
+    <!-- ============================================================== -->
+    <section class="view-panel" id="viewWebhooks" aria-labelledby="headingWebhooks">
+      <div class="view-header">
+        <div>
+          <h1 class="view-title" id="headingWebhooks">Integraciones &amp; Despacho de Webhooks</h1>
+          <p class="view-desc">Despacho estandarizado de alertas y eventos críticos a enrutadores y mensajería externa (Mismapp / Slack / Discord / etc.).</p>
+        </div>
+        <div class="view-actions">
+          <button class="btn btn-secondary" onclick="evaluarCalibracionesWebhooks()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+            </svg>
+            Evaluar Calibraciones
+          </button>
+          <button class="btn btn-primary" onclick="openModal('modalNuevoWebhook')">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="12" y1="5" x2="12" y2="19"/>
+              <line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+            Nuevo Webhook
+          </button>
+        </div>
+      </div>
+
+      <div class="card mt-6">
+        <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+          <h2 class="card-title">📡 Endpoints Registrados</h2>
+          <button class="btn btn-sm btn-secondary" onclick="cargarWebhooks()">Refrescar</button>
+        </div>
+        <div class="table-responsive">
+          <table class="data-table" id="tablaWebhooks">
+            <thead>
+              <tr>
+                <th>Descripción</th>
+                <th>URL de Destino</th>
+                <th>Eventos Suscritos</th>
+                <th>Firma HMAC</th>
+                <th>Estado</th>
+                <th style="text-align: right;">Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="tbodyWebhooks">
+              <tr>
+                <td colspan="6" class="empty-state">Cargando endpoints de webhook...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================== -->
+    <!-- VISTA 9: NOTIFICACIONES MULTICANAL (FEAT-014 / HITO 11) -->
+    <!-- ============================================================== -->
+    <section class="view-panel" id="viewNotificaciones" aria-labelledby="headingNotificaciones">
+      <div class="view-header">
+        <div>
+          <h1 class="view-title" id="headingNotificaciones">Notificaciones Push &amp; Alertas por Telegram</h1>
+          <p class="view-desc">Canales en tiempo real para humanos: notificaciones emergentes en navegador (PWA / Web Push) y despacho directo a chats o grupos de Telegram.</p>
+        </div>
+      </div>
+
+      <!-- Configuración y Diagnóstico de Canales -->
+      <div class="grid grid-2 mt-6" style="gap: 1.5rem;">
+        <!-- Canal 1: Web Push API (PWA) -->
+        <div class="card">
+          <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+            <h2 class="card-title">📱 Notificaciones Web Push (Navegador)</h2>
+            <span class="badge badge-gray" id="badgePushStatus">Verificando...</span>
+          </div>
+          <p class="text-secondary text-sm mb-4">
+            Recibe alertas emergentes directamente en tu teléfono móvil o computador portátil mediante el Service Worker de la PWA, incluso si la pestaña está cerrada o en segundo plano.
+          </p>
+          <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+            <button class="btn btn-primary" id="btnTogglePush" onclick="toggleWebPushSubscription()">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+              </svg>
+              <span id="txtBtnTogglePush">Activar Notificaciones Web Push</span>
+            </button>
+            <button class="btn btn-secondary" id="btnTestPush" onclick="probarWebPush()">
+              Probar Envío Push
+            </button>
+          </div>
+        </div>
+
+        <!-- Canal 2: Telegram Bot -->
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">✈️ Canal Telegram Bot</h2>
+          </div>
+          <p class="text-secondary text-sm mb-4">
+            Despacho inmediato a grupos o canales de supervisión técnica cuando se detecta probabilidad de fuga, salto anómalo o caídas de servidor.
+          </p>
+          <div class="form-group mb-4">
+            <label class="form-label" for="inputTelegramMsg">Mensaje de diagnóstico personalizado</label>
+            <input type="text" class="form-input" id="inputTelegramMsg" placeholder="Prueba de alerta desde panel Medidores" value="Prueba de conectividad del Bot de Telegram">
+          </div>
+          <button class="btn btn-secondary" onclick="probarTelegram()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="22" y1="2" x2="11" y2="13"/>
+              <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+            </svg>
+            Enviar Prueba a Telegram
+          </button>
+        </div>
+      </div>
+
+      <!-- Bitácora de Envíos Recientes -->
+      <div class="card mt-6">
+        <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+          <h2 class="card-title">📋 Bitácora de Entregas Multicanal</h2>
+          <button class="btn btn-sm btn-secondary" onclick="cargarHistorialNotificaciones()">Refrescar</button>
+        </div>
+        <div class="table-responsive">
+          <table class="data-table" id="tablaHistorialNotificaciones">
+            <thead>
+              <tr>
+                <th>Canal</th>
+                <th>Evento</th>
+                <th>Destinatario</th>
+                <th>Severidad</th>
+                <th>Título</th>
+                <th>Estado</th>
+                <th>Latencia</th>
+                <th>Fecha y Hora</th>
+              </tr>
+            </thead>
+            <tbody id="tbodyHistorialNotificaciones">
+              <tr>
+                <td colspan="8" class="empty-state">Cargando bitácora de notificaciones...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ============================================================== -->
+  <!-- MODAL UNIFICADO: REGISTRO DE LECTURA (OPERADOR) -->
+  <!-- ============================================================== -->
+  <div class="modal-backdrop" id="modalLectura" role="dialog" aria-modal="true" aria-labelledby="modalLecturaTitulo">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modalLecturaTitulo">Registrar Lectura de Medición</h3>
+        <button class="btn-close" onclick="closeModal('modalLectura')" aria-label="Cerrar">&times;</button>
+      </div>
+      <form id="formLectura" onsubmit="submitLectura(event)">
+        <input type="hidden" id="modalLecturaMedidorId">
+        <div class="modal-body">
+          <div style="background: var(--bg-surface-hover); padding: 0.85rem 1rem; border-radius: var(--radius-md); border: 1px solid var(--border-subtle); margin-bottom: 1.25rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
+              <strong id="modalLecturaCodigo" class="font-mono" style="font-size: 1.1rem; color: var(--text-primary);">MED-000</strong>
+              <span id="modalLecturaTipo" class="badge badge-muted">Tipo</span>
+            </div>
+            <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.5rem;" id="modalLecturaUbicacion">Ubicación</div>
+            <div style="font-size: 0.8rem; color: var(--text-secondary); display: flex; justify-content: space-between; border-top: 1px solid var(--border-subtle); padding-top: 0.4rem;">
+              <span>Lectura Previa:</span>
+              <strong id="modalLecturaAnterior" class="font-mono">--</strong>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="modalLecturaInputValor" class="form-label">
+              Nuevo Valor de Medición (<span id="modalLecturaUnidad">--</span>) *
+            </label>
+            <input type="number" id="modalLecturaInputValor" class="form-input" style="font-size: 1.25rem; font-weight: 700; font-family: var(--font-mono);" required>
+            <span class="form-hint">En medidores acumulativos, la cifra debe ser estrictamente mayor o igual a la previa.</span>
+          </div>
+
+          <div class="form-group">
+            <label for="modalLecturaInputFecha" class="form-label">Fecha y Hora de Medición *</label>
+            <input type="datetime-local" id="modalLecturaInputFecha" class="form-input" required>
+          </div>
+
+          <div class="form-group">
+            <label for="modalLecturaObservaciones" class="form-label">Observaciones de Inspección (Opcional)</label>
+            <textarea id="modalLecturaObservaciones" class="form-textarea" rows="2" placeholder="Ej. Medición rutinaria, precinto intacto..."></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" onclick="closeModal('modalLectura')">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Confirmar y Registrar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ============================================================== -->
+  <!-- MODAL: NUEVA INSTALACIÓN -->
+  <!-- ============================================================== -->
+  <div class="modal-backdrop" id="modalInstalacion" role="dialog" aria-modal="true" aria-labelledby="modalInstalacionTitulo">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modalInstalacionTitulo">Nueva Instalación / Sede</h3>
+        <button class="btn-close" onclick="closeModal('modalInstalacion')" aria-label="Cerrar">&times;</button>
+      </div>
+      <form id="formInstalacion" onsubmit="submitNuevaInstalacion(event)">
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="inputInstalacionNombre" class="form-label">Nombre de la Sede *</label>
+            <input type="text" id="inputInstalacionNombre" class="form-input" placeholder="Ej. Planta Maipú, Sede Providencia" required>
+          </div>
+          <div class="form-group">
+            <label for="inputInstalacionDireccion" class="form-label">Dirección Física *</label>
+            <input type="text" id="inputInstalacionDireccion" class="form-input" placeholder="Ej. Av. Central 4500, Sector Industrial" required>
+          </div>
+          <div class="form-group">
+            <label for="inputInstalacionDesc" class="form-label">Descripción Operativa</label>
+            <textarea id="inputInstalacionDesc" class="form-textarea" rows="2" placeholder="Ej. Central de almacenamiento y distribución"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" onclick="closeModal('modalInstalacion')">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Crear Instalación</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ============================================================== -->
+  <!-- MODAL: NUEVO TIPO DE MEDIDOR -->
+  <!-- ============================================================== -->
+  <div class="modal-backdrop" id="modalTipo" role="dialog" aria-modal="true" aria-labelledby="modalTipoTitulo">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modalTipoTitulo">Configurar Nuevo Tipo de Medidor</h3>
+        <button class="btn-close" onclick="closeModal('modalTipo')" aria-label="Cerrar">&times;</button>
+      </div>
+      <form id="formTipo" onsubmit="submitNuevoTipo(event)">
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="inputTipoNombre" class="form-label">Nombre Descriptivo *</label>
+            <input type="text" id="inputTipoNombre" class="form-input" placeholder="Ej. Agua Pozo Profundo, Diésel Turbina" required>
+          </div>
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label for="selectTipoRecurso" class="form-label">Recurso *</label>
+              <select id="selectTipoRecurso" class="form-select" required>
+                <option value="AGUA">Agua</option>
+                <option value="LUZ">Electricidad (Luz)</option>
+                <option value="GAS">Gas</option>
+                <option value="PETROLEO">Petróleo / Combustible</option>
+                <option value="OTRO">Otro Recurso</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="inputTipoUnidad" class="form-label">Unidad de Medida *</label>
+              <input type="text" id="inputTipoUnidad" class="form-input" placeholder="Ej. m3, L, kWh, %" required>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="selectTipoMedicion" class="form-label">Modo de Medición *</label>
+            <select id="selectTipoMedicion" class="form-select" required>
+              <option value="ACUMULATIVO">Acumulativo / Secuencial (No decreciente)</option>
+              <option value="NIVEL">Nivel (Capacidad de tanque / Fluctuante)</option>
+              <option value="INSTANTANEO">Instantáneo (Flujo o potencia en tiempo real)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="inputTipoDesc" class="form-label">Descripción</label>
+            <textarea id="inputTipoDesc" class="form-textarea" rows="2" placeholder="Especificaciones técnicas o rango"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" onclick="closeModal('modalTipo')">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Registrar Tipo</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ============================================================== -->
+  <!-- MODAL: NUEVO MEDIDOR FÍSICO -->
+  <!-- ============================================================== -->
+  <div class="modal-backdrop" id="modalMedidor" role="dialog" aria-modal="true" aria-labelledby="modalMedidorTitulo">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modalMedidorTitulo">Registrar Nuevo Medidor Físico</h3>
+        <button class="btn-close" onclick="closeModal('modalMedidor')" aria-label="Cerrar">&times;</button>
+      </div>
+      <form id="formMedidor" onsubmit="submitNuevoMedidor(event)">
+        <div class="modal-body">
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label for="selectMedidorInstalacion" class="form-label">Instalación / Sede *</label>
+              <select id="selectMedidorInstalacion" class="form-select" required>
+                <option value="">Selecciona instalación...</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="selectMedidorTipo" class="form-label">Tipo de Medidor *</label>
+              <select id="selectMedidorTipo" class="form-select" required>
+                <option value="">Selecciona tipo...</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label for="inputMedidorCodigo" class="form-label">Código Identificador Único *</label>
+              <input type="text" id="inputMedidorCodigo" class="form-input font-mono" placeholder="Ej. MED-AG-001" required>
+            </div>
+            <div class="form-group">
+              <label for="inputMedidorSerie" class="form-label">N° de Serie Físico</label>
+              <input type="text" id="inputMedidorSerie" class="form-input font-mono" placeholder="Ej. SN-883492">
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="inputMedidorUbicacion" class="form-label">Ubicación Interna en Planta *</label>
+            <input type="text" id="inputMedidorUbicacion" class="form-input" placeholder="Ej. Sala de bombas piso -1, Caseta exterior" required>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" onclick="closeModal('modalMedidor')">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Registrar Medidor</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ============================================================== -->
+  <!-- MODAL: CAMBIAR CONTRASEÑA (SELF-SERVICE) -->
+  <!-- ============================================================== -->
+  <div class="modal-backdrop" id="modalCambiarPassword" role="dialog" aria-modal="true" aria-labelledby="modalCambiarPassTitulo">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modalCambiarPassTitulo">🔑 Cambiar Mi Contraseña</h3>
+        <button class="btn-close" onclick="closeModal('modalCambiarPassword')" aria-label="Cerrar">&times;</button>
+      </div>
+      <form id="formCambiarPassword" onsubmit="submitCambiarPassword(event)">
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="inputPasswordActual" class="form-label">Contraseña Actual *</label>
+            <input type="password" id="inputPasswordActual" class="form-input" placeholder="Tu contraseña vigente" autocomplete="current-password" required>
+          </div>
+          <div class="form-group">
+            <label for="inputPasswordNueva" class="form-label">Nueva Contraseña *</label>
+            <input type="password" id="inputPasswordNueva" class="form-input" minlength="8" placeholder="Mínimo 8 caracteres" autocomplete="new-password" required>
+            <span class="form-hint">Debe contener al menos 8 caracteres para asegurar la cuenta.</span>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" onclick="closeModal('modalCambiarPassword')">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Actualizar Contraseña</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ============================================================== -->
+  <!-- MODAL: NUEVO USUARIO (ADMIN) -->
+  <!-- ============================================================== -->
+  <div class="modal-backdrop" id="modalNuevoUsuario" role="dialog" aria-modal="true" aria-labelledby="modalNuevoUsuarioTitulo">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modalNuevoUsuarioTitulo">👤 Crear Nuevo Usuario</h3>
+        <button class="btn-close" onclick="closeModal('modalNuevoUsuario')" aria-label="Cerrar">&times;</button>
+      </div>
+      <form id="formNuevoUsuario" onsubmit="submitNuevoUsuario(event)">
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="inputNuevoUsuarioNombre" class="form-label">Nombre Completo *</label>
+            <input type="text" id="inputNuevoUsuarioNombre" class="form-input" placeholder="Ej. Camila Morales" autocomplete="name" required>
+          </div>
+          <div class="form-group">
+            <label for="inputNuevoUsuarioEmail" class="form-label">Correo Electrónico Corporativo *</label>
+            <input type="email" id="inputNuevoUsuarioEmail" class="form-input font-mono" placeholder="usuario@planta.cl" autocomplete="email" required>
+          </div>
+          <div class="form-group">
+            <label for="inputNuevoUsuarioPassword" class="form-label">Contraseña Temporal *</label>
+            <input type="password" id="inputNuevoUsuarioPassword" class="form-input" minlength="8" placeholder="Mínimo 8 caracteres" autocomplete="new-password" required>
+          </div>
+          <div class="form-group">
+            <label for="selectNuevoUsuarioRol" class="form-label">Rol y Permisos *</label>
+            <select id="selectNuevoUsuarioRol" class="form-select" required>
+              <option value="OPERADOR">OPERADOR (Captura de lecturas en terreno)</option>
+              <option value="SUPERVISOR">SUPERVISOR (Creación de medidores en sedes asignadas)</option>
+              <option value="ADMIN">ADMIN (Control global, sedes y usuarios)</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" onclick="closeModal('modalNuevoUsuario')">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Crear Usuario</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ============================================================== -->
+  <!-- MODAL: EDITAR USUARIO & SEDES (ADMIN) -->
+  <!-- ============================================================== -->
+  <div class="modal-backdrop" id="modalEditarUsuario" role="dialog" aria-modal="true" aria-labelledby="modalEditarUsuarioTitulo">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modalEditarUsuarioTitulo">✏️ Editar Usuario y Asignaciones</h3>
+        <button class="btn-close" onclick="closeModal('modalEditarUsuario')" aria-label="Cerrar">&times;</button>
+      </div>
+      <form id="formEditarUsuario" onsubmit="submitEditarUsuario(event)">
+        <input type="hidden" id="editUsuarioId">
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="editUsuarioNombre" class="form-label">Nombre *</label>
+            <input type="text" id="editUsuarioNombre" class="form-input" required>
+          </div>
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label for="editUsuarioRol" class="form-label">Rol del Sistema *</label>
+              <select id="editUsuarioRol" class="form-select" required>
+                <option value="OPERADOR">OPERADOR</option>
+                <option value="SUPERVISOR">SUPERVISOR</option>
+                <option value="ADMIN">ADMIN</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="editUsuarioActivo" class="form-label">Estado de la Cuenta</label>
+              <select id="editUsuarioActivo" class="form-select">
+                <option value="true">Activo</option>
+                <option value="false">Desactivado / Inactivo</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Sedes / Instalaciones Asignadas</label>
+            <span class="form-hint" style="margin-bottom: 0.4rem; display: block;">Aplica para el alcance operativo de Supervisores y Operadores.</span>
+            <div class="checklist-container" id="editUsuarioInstalacionesList">
+              <!-- Checkboxes inyectados dinámicamente -->
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" onclick="closeModal('modalEditarUsuario')">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ============================================================== -->
+  <!-- MODAL: RESET PASSWORD (ADMIN) -->
+  <!-- ============================================================== -->
+  <div class="modal-backdrop" id="modalResetPassword" role="dialog" aria-modal="true" aria-labelledby="modalResetPassTitulo">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modalResetPassTitulo">🔄 Restablecer Contraseña Administrativa</h3>
+        <button class="btn-close" onclick="closeModal('modalResetPassword')" aria-label="Cerrar">&times;</button>
+      </div>
+      <form id="formResetPassword" onsubmit="submitResetPassword(event)">
+        <input type="hidden" id="resetUsuarioId">
+        <div class="modal-body">
+          <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 1rem;">
+            Restablecerás la clave de acceso de <strong id="resetUsuarioNombre">--</strong>. El usuario podrá iniciar sesión inmediatamente con esta nueva contraseña.
+          </p>
+          <div class="form-group">
+            <label for="resetPasswordNueva" class="form-label">Nueva Contraseña *</label>
+            <input type="password" id="resetPasswordNueva" class="form-input" minlength="8" placeholder="Mínimo 8 caracteres" autocomplete="new-password" required>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" onclick="closeModal('modalResetPassword')">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Restablecer Clave</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ============================================================== -->
+  <!-- MODAL: REGISTRAR FACTURA DE PROVEEDOR (FEAT-007) -->
+  <!-- ============================================================== -->
+  <div class="modal-backdrop" id="modalRegistrarFactura" role="dialog" aria-modal="true" aria-labelledby="modalFacturaTitulo">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modalFacturaTitulo">🧾 Ingreso de Factura para Conciliación</h3>
+        <button class="btn-close" onclick="closeModal('modalRegistrarFactura')" aria-label="Cerrar">&times;</button>
+      </div>
+      <form id="formRegistrarFactura" onsubmit="submitRegistrarFactura(event)">
+        <div class="modal-body">
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label for="facturaInstalacionId" class="form-label">Sede / Instalación *</label>
+              <select id="facturaInstalacionId" class="form-select" required></select>
+            </div>
+            <div class="form-group">
+              <label for="facturaRecurso" class="form-label">Recurso *</label>
+              <select id="facturaRecurso" class="form-select" required>
+                <option value="AGUA">Agua Potable</option>
+                <option value="LUZ">Electricidad</option>
+                <option value="GAS">Gas</option>
+                <option value="PETROLEO">Petróleo / Diésel</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="facturaNumero" class="form-label">N° de Factura / Documento</label>
+            <input type="text" id="facturaNumero" class="form-input" placeholder="Ej: FAC-2026-90412">
+          </div>
+
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label for="facturaPeriodoInicio" class="form-label">Inicio Período Facturado *</label>
+              <input type="date" id="facturaPeriodoInicio" class="form-input" required>
+            </div>
+            <div class="form-group">
+              <label for="facturaPeriodoFin" class="form-label">Fin Período Facturado *</label>
+              <input type="date" id="facturaPeriodoFin" class="form-input" required>
+            </div>
+          </div>
+
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label for="facturaConsumo" class="form-label">Consumo Facturado *</label>
+              <input type="number" step="0.01" id="facturaConsumo" class="form-input" placeholder="Ej: 1450.5" required>
+            </div>
+            <div class="form-group">
+              <label for="facturaUnidad" class="form-label">Unidad de Medida *</label>
+              <select id="facturaUnidad" class="form-select" required>
+                <option value="M3">M3</option>
+                <option value="KWH">KWH</option>
+                <option value="LITROS">LITROS</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="facturaMonto" class="form-label">Monto Total Facturado ($CLP)</label>
+            <input type="number" id="facturaMonto" class="form-input" placeholder="Ej: 450000">
+          </div>
+
+          <div class="form-group">
+            <label for="facturaNotas" class="form-label">Notas / Observaciones</label>
+            <textarea id="facturaNotas" class="form-input" rows="2" placeholder="Observaciones de la conciliación..."></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" onclick="closeModal('modalRegistrarFactura')">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Registrar y Conciliar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ============================================================== -->
+  <!-- MODAL: ATENDER / RESOLVER INCIDENTE (FEAT-008) -->
+  <!-- ============================================================== -->
+  <div class="modal-backdrop" id="modalResolverIncidente" role="dialog" aria-modal="true" aria-labelledby="modalResolverTitulo">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modalResolverTitulo">🛡️ Atender Incidente de Alerta</h3>
+        <button class="btn-close" onclick="closeModal('modalResolverIncidente')" aria-label="Cerrar">&times;</button>
+      </div>
+      <form id="formResolverIncidente" onsubmit="submitResolverIncidente(event)">
+        <input type="hidden" id="resolverIncidenteId">
+        <div class="modal-body">
+          <div style="background: var(--bg-surface-hover); padding: 0.85rem; border-radius: var(--radius-md); border: 1px solid var(--border-subtle); margin-bottom: 1rem;">
+            <div id="resolverIncidenteMensaje" style="font-weight: 600; color: var(--text-primary); margin-bottom: 0.35rem;">Mensaje del incidente</div>
+            <div id="resolverIncidenteMeta" style="font-size: 0.8rem; color: var(--text-muted);">Meta info</div>
+          </div>
+
+          <div class="form-group">
+            <label for="resolverEstado" class="form-label">Nuevo Estado *</label>
+            <select id="resolverEstado" class="form-select" required>
+              <option value="EN_REVISION">En Revisión (En investigación)</option>
+              <option value="RESUELTO" selected>Resuelto (Problema subsanado)</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="resolverNotas" class="form-label">Bitácora / Notas de Resolución *</label>
+            <textarea id="resolverNotas" class="form-input" rows="3" minlength="3" placeholder="Describe las acciones tomadas para atender o resolver la anomalía..." required></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" onclick="closeModal('modalResolverIncidente')">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Guardar Resolución</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ============================================================== -->
+  <!-- MODAL: REGISTRAR MANTENIMIENTO / CALIBRACIÓN (FEAT-009) -->
+  <!-- ============================================================== -->
+  <div class="modal-backdrop" id="modalRegistrarMantenimiento" role="dialog" aria-modal="true" aria-labelledby="modalMantenimientoTitulo">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modalMantenimientoTitulo">🛠️ Registro de Mantenimiento &amp; Precintos</h3>
+        <button class="btn-close" onclick="closeModal('modalRegistrarMantenimiento')" aria-label="Cerrar">&times;</button>
+      </div>
+      <form id="formRegistrarMantenimiento" onsubmit="submitRegistrarMantenimiento(event)">
+        <div class="modal-body">
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label for="mantMedidorId" class="form-label">Medidor Objetivo *</label>
+              <select id="mantMedidorId" class="form-select" required onchange="onMantMedidorChange()"></select>
+            </div>
+            <div class="form-group">
+              <label for="mantTipo" class="form-label">Tipo de Intervención *</label>
+              <select id="mantTipo" class="form-select" required onchange="onMantTipoChange()">
+                <option value="CALIBRACION">Calibración Periódica</option>
+                <option value="CAMBIO_PRECINTO">Cambio de Precinto de Seguridad</option>
+                <option value="REEMPLAZO_EQUIPO">Reemplazo / Sustitución de Equipo</option>
+                <option value="INSPECCION">Inspección Física Rutinaria</option>
+                <option value="BAJA_TECNICA">Baja Técnica Definitiva</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label for="mantFecha" class="form-label">Fecha de Intervención *</label>
+              <input type="datetime-local" id="mantFecha" class="form-input" required>
+            </div>
+            <div class="form-group">
+              <label for="mantTecnico" class="form-label">Técnico / Especialista Responsable *</label>
+              <input type="text" id="mantTecnico" class="form-input" placeholder="Nombre completo o laboratorio" required>
+            </div>
+          </div>
+
+          <div id="mantSeccionPrecinto" class="form-grid-2">
+            <div class="form-group">
+              <label for="mantPrecintoAnt" class="form-label">Precinto Anterior</label>
+              <input type="text" id="mantPrecintoAnt" class="form-input" placeholder="Autocompletado si existe">
+            </div>
+            <div class="form-group">
+              <label for="mantPrecintoNuevo" class="form-label">Nuevo Precinto de Seguridad</label>
+              <input type="text" id="mantPrecintoNuevo" class="form-input" placeholder="Ej: PREC-2026-990">
+            </div>
+          </div>
+
+          <div id="mantSeccionCalibracion" class="form-grid-2">
+            <div class="form-group">
+              <label for="mantCertificado" class="form-label">Certificado / Informe Metrológico</label>
+              <input type="text" id="mantCertificado" class="form-input" placeholder="Ej: CERT-DICTUC-2026-09">
+            </div>
+            <div class="form-group">
+              <label for="mantProxCalib" class="form-label">Próxima Calibración Recomendada</label>
+              <input type="date" id="mantProxCalib" class="form-input">
+            </div>
+          </div>
+
+          <div id="mantSeccionBaja" class="form-grid-2" style="display: none;">
+            <div class="form-group">
+              <label for="mantLecturaRetiro" class="form-label">Lectura Final de Retiro</label>
+              <input type="number" step="0.01" id="mantLecturaRetiro" class="form-input" placeholder=">= última lectura">
+            </div>
+            <div class="form-group" id="mantGroupNuevoCodigo">
+              <label for="mantNuevoMedidorCodigo" class="form-label">Código del Medidor Sustituto</label>
+              <input type="text" id="mantNuevoMedidorCodigo" class="form-input" placeholder="Ej: MED-AG-01-V2">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="mantObservaciones" class="form-label">Observaciones y Hallazgos Técnicos</label>
+            <textarea id="mantObservaciones" class="form-input" rows="2" placeholder="Detalle técnico de la intervención..."></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" onclick="closeModal('modalRegistrarMantenimiento')">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Registrar en Bitácora</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ============================================================== -->
+  <!-- MODAL: REGLAS DE ALERTA (FEAT-008) -->
+  <!-- ============================================================== -->
+  <div class="modal-backdrop" id="modalConfigurarReglas" role="dialog" aria-modal="true" aria-labelledby="modalReglasTitulo">
+    <div class="modal-box modal-lg">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modalReglasTitulo">⚙️ Configuración de Reglas de Detección</h3>
+        <button class="btn-close" onclick="closeModal('modalConfigurarReglas')" aria-label="Cerrar">&times;</button>
+      </div>
+      <div class="modal-body">
+        <h4 style="font-size: 0.95rem; margin-bottom: 0.75rem; color: var(--text-primary);">Reglas Activas en el Sistema</h4>
+        <div class="table-responsive" style="margin-bottom: 1.5rem;">
+          <table class="data-table" id="tablaReglasAlertas">
+            <thead>
+              <tr>
+                <th>Nombre</th>
+                <th>Tipo</th>
+                <th>Recurso</th>
+                <th>Umbral</th>
+                <th>Estado</th>
+              </tr>
+            </thead>
+            <tbody id="tbodyReglasAlertas">
+              <tr><td colspan="5" class="empty-state">Cargando reglas...</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h4 style="font-size: 0.95rem; margin-bottom: 0.75rem; color: var(--text-primary); border-top: 1px solid var(--border-subtle); padding-top: 1rem;">Crear Nueva Regla</h4>
+        <form id="formCrearRegla" onsubmit="submitCrearRegla(event)">
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label for="reglaNombre" class="form-label">Nombre de la Regla *</label>
+              <input type="text" id="reglaNombre" class="form-input" placeholder="Ej: Salto Crítico Electricidad" required>
+            </div>
+            <div class="form-group">
+              <label for="reglaTipo" class="form-label">Tipo de Detección *</label>
+              <select id="reglaTipo" class="form-select" required>
+                <option value="SALTO_CONSUMO">Salto Atípico de Consumo (%)</option>
+                <option value="FUGA_PROBABLE">Fuga Continua Probable</option>
+                <option value="SIN_REPORTE">Sin Reporte / Desconectado (Horas)</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label for="reglaRecurso" class="form-label">Recurso Específico</label>
+              <select id="reglaRecurso" class="form-select">
+                <option value="">Aplica a todos los recursos</option>
+                <option value="AGUA">Agua Potable</option>
+                <option value="LUZ">Electricidad</option>
+                <option value="GAS">Gas</option>
+                <option value="PETROLEO">Combustible</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="reglaUmbral" class="form-label">Valor del Umbral *</label>
+              <input type="number" step="0.1" id="reglaUmbral" class="form-input" placeholder="Ej: 50 (% o horas)" required>
+            </div>
+          </div>
+          <button type="submit" class="btn btn-secondary btn-sm" style="margin-top: 0.25rem;">+ Agregar Regla</button>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline" onclick="closeModal('modalConfigurarReglas')">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: NUEVO WEBHOOK -->
+  <div class="modal-backdrop" id="modalNuevoWebhook" role="dialog" aria-modal="true" aria-labelledby="modalNuevoWebhookTitulo">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modalNuevoWebhookTitulo">Registrar Endpoint de Webhook</h3>
+        <button class="btn-close" onclick="closeModal('modalNuevoWebhook')" aria-label="Cerrar">&times;</button>
+      </div>
+      <form id="formNuevoWebhook" onsubmit="submitNuevoWebhook(event)">
+        <div class="form-group">
+          <label class="form-label" for="webhookUrl">URL de Destino (HTTPS/HTTP) *</label>
+          <input type="url" class="form-input" id="webhookUrl" placeholder="https://router.mismapp.internal/api/webhooks/incoming" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="webhookDescripcion">Descripción / Nombre del Receptor *</label>
+          <input type="text" class="form-input" id="webhookDescripcion" placeholder="Enrutador Central Mismapp" required minlength="3">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="webhookSecret">Clave Secreta para Firma HMAC-SHA256 (Opcional)</label>
+          <input type="text" class="form-input" id="webhookSecret" placeholder="Dejar vacío o mín. 8 caracteres para firma segura" minlength="8">
+          <span style="font-size: 0.75rem; color: var(--text-secondary); display: block; margin-top: 4px;">Se enviará en cabecera <code>X-Webhook-Signature: sha256=&lt;hmac&gt;</code></span>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Eventos a Suscribir:</label>
+          <div style="display: flex; flex-direction: column; gap: 0.4rem; font-size: 0.85rem; padding: 0.5rem; background: var(--bg-surface); border-radius: 6px;">
+            <label><input type="checkbox" id="evTodos" value="*" checked onchange="toggleEventosCheckboxes(this)"> <strong>Todos los eventos (*)</strong></label>
+            <label><input type="checkbox" class="ev-item" value="alerta.incidente_detectado" disabled> 🚨 alerta.incidente_detectado (Fugas, saltos, sin reporte)</label>
+            <label><input type="checkbox" class="ev-item" value="alerta.incidente_resuelto" disabled> ✅ alerta.incidente_resuelto</label>
+            <label><input type="checkbox" class="ev-item" value="medidor.calibracion_proxima" disabled> ⏳ medidor.calibracion_proxima (Aviso preventivo)</label>
+            <label><input type="checkbox" class="ev-item" value="medidor.calibracion_vencida" disabled> ⚠️ medidor.calibracion_vencida</label>
+            <label><input type="checkbox" class="ev-item" value="sistema.error_critico" disabled> 💥 sistema.error_critico (Excepciones HTTP 500 no controladas)</label>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="closeModal('modalNuevoWebhook')">Cancelar</button>
+          <button type="submit" class="btn btn-primary" id="btnGuardarWebhook">Guardar Webhook</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: HISTORIAL DE ENTREGAS WEBHOOK -->
+  <div class="modal-backdrop" id="modalEntregasWebhook" role="dialog" aria-modal="true" aria-labelledby="modalEntregasTitulo">
+    <div class="modal-box" style="max-width: 800px;">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modalEntregasTitulo">Historial de Entregas del Webhook</h3>
+        <button class="btn-close" onclick="closeModal('modalEntregasWebhook')" aria-label="Cerrar">&times;</button>
+      </div>
+      <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Fecha</th>
+              <th>Evento</th>
+              <th>Estado</th>
+              <th>Código</th>
+              <th>Latencia</th>
+              <th>Error / Respuesta</th>
+            </tr>
+          </thead>
+          <tbody id="tbodyEntregasWebhook">
+            <tr>
+              <td colspan="6" class="empty-state">Cargando historial de entregas...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('modalEntregasWebhook')">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- Contenedor Unificado de Toasts -->
+  <div class="toast-container" id="toastContainer" aria-live="polite"></div>
+
+  <!-- Capas de Arquitectura Frontend (ADR 0002) -->
+  <script src="/js/api.js"></script>
+  <script src="/js/theme.js"></script>
+  <script src="/js/components.js"></script>
+  <script src="/js/sync-manager.js"></script>
+  <script src="/app.js"></script>
+</body>
+</html>

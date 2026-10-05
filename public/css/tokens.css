@@ -1,0 +1,168 @@
+/* ==============================================================================
+   MEDIDORES AURORA DESIGN SYSTEM - DESIGN TOKENS
+   ADR 0002: Arquitectura del Frontend, Design System y Desacoplamiento de Lógica
+   ============================================================================== */
+
+:root {
+  /* Tipografías */
+  --font-heading: 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-body: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+  /* Radios de borde */
+  --radius-xs: 4px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+  --radius-xl: 24px;
+  --radius-full: 9999px;
+
+  /* Transiciones estándar */
+  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-normal: 250ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 350ms cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Paleta fija de Recursos Industriales (consistente en ambos modos) */
+  --meter-water: #0ea5e9;       /* Agua - Cian / Sky */
+  --meter-water-rgb: 14, 165, 233;
+  --meter-elec: #f59e0b;        /* Electricidad - Ámbar / Oro */
+  --meter-elec-rgb: 245, 158, 11;
+  --meter-fuel: #f97316;        /* Combustible / Diesel - Naranja */
+  --meter-fuel-rgb: 249, 115, 22;
+  --meter-gas: #f43f5e;         /* Gas - Carmesí / Rosa */
+  --meter-gas-rgb: 244, 63, 94;
+  --meter-other: #8b5cf6;       /* Otros recursos - Púrpura */
+  --meter-other-rgb: 139, 92, 246;
+
+  /* Estados Funcionales Universales */
+  --status-success: #10b981;
+  --status-warning: #f59e0b;
+  --status-danger: #ef4444;
+  --status-info: #3b82f6;
+
+  /* Dimensiones y Breakpoints Responsivos (ADR 0010) */
+  --breakpoint-xs: 320px;
+  --breakpoint-sm: 375px;
+  --breakpoint-md: 425px;
+  --breakpoint-lg: 768px;
+  --breakpoint-xl: 1024px;
+  --touch-target-min: 44px;
+
+  /* Soporte para controles nativos de formulario */
+  color-scheme: dark light;
+}
+
+/* ==============================================================================
+   TEMA OSCURO (Por defecto / Deep Slate Industrial)
+   ============================================================================== */
+:root,
+[data-theme="dark"] {
+  --theme-mode: 'dark';
+
+  /* Fondos y Superficies */
+  --bg-canvas: #0a0d14;
+  --bg-canvas-gradient-1: rgba(99, 102, 241, 0.08);
+  --bg-canvas-gradient-2: rgba(16, 185, 129, 0.05);
+  --bg-navbar: rgba(10, 13, 20, 0.85);
+
+  --bg-surface: rgba(17, 24, 39, 0.75);
+  --bg-surface-solid: #111827;
+  --bg-surface-hover: rgba(24, 33, 53, 0.85);
+  --bg-surface-active: rgba(30, 41, 59, 0.95);
+  --bg-elevated: #1e293b;
+  --bg-input: rgba(15, 23, 42, 0.65);
+  --bg-input-focus: rgba(15, 23, 42, 0.9);
+
+  /* Texto y Tipografía */
+  --text-primary: #f8fafc;
+  --text-secondary: #cbd5e1;
+  --text-muted: #94a3b8;
+  --text-dim: #64748b;
+  --text-inverse: #0f172a;
+
+  /* Bordes y Separadores */
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-medium: rgba(255, 255, 255, 0.16);
+  --border-focus: rgba(99, 102, 241, 0.55);
+  --border-highlight: rgba(255, 255, 255, 0.12);
+
+  /* Acentos de Marca */
+  --accent-primary: #6366f1;
+  --accent-primary-hover: #4f46e5;
+  --accent-primary-light: rgba(99, 102, 241, 0.15);
+  --accent-glow: rgba(99, 102, 241, 0.3);
+
+  /* Estados con fondos translúcidos */
+  --status-success-bg: rgba(16, 185, 129, 0.12);
+  --status-success-border: rgba(16, 185, 129, 0.25);
+  --status-warning-bg: rgba(245, 158, 11, 0.12);
+  --status-warning-border: rgba(245, 158, 11, 0.25);
+  --status-danger-bg: rgba(239, 68, 68, 0.12);
+  --status-danger-border: rgba(239, 68, 68, 0.25);
+  --status-info-bg: rgba(59, 130, 246, 0.12);
+  --status-info-border: rgba(59, 130, 246, 0.25);
+
+  /* Sombras y Elevaciones */
+  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 10px 25px -5px rgba(0, 0, 0, 0.55), 0 8px 10px -6px rgba(0, 0, 0, 0.45);
+  --shadow-lg: 0 20px 35px -10px rgba(0, 0, 0, 0.7);
+  --shadow-glow: 0 0 25px rgba(99, 102, 241, 0.25);
+  --backdrop-blur: blur(16px);
+}
+
+/* ==============================================================================
+   TEMA CLARO (Crisp Studio / Alto Contraste Diurno)
+   ============================================================================== */
+[data-theme="light"] {
+  --theme-mode: 'light';
+
+  /* Fondos y Superficies */
+  --bg-canvas: #f8fafc;
+  --bg-canvas-gradient-1: rgba(99, 102, 241, 0.05);
+  --bg-canvas-gradient-2: rgba(14, 165, 233, 0.04);
+  --bg-navbar: rgba(255, 255, 255, 0.88);
+
+  --bg-surface: #ffffff;
+  --bg-surface-solid: #ffffff;
+  --bg-surface-hover: #f1f5f9;
+  --bg-surface-active: #e2e8f0;
+  --bg-elevated: #f1f5f9;
+  --bg-input: #ffffff;
+  --bg-input-focus: #ffffff;
+
+  /* Texto y Tipografía */
+  --text-primary: #0f172a;
+  --text-secondary: #334155;
+  --text-muted: #64748b;
+  --text-dim: #94a3b8;
+  --text-inverse: #f8fafc;
+
+  /* Bordes y Separadores */
+  --border-subtle: rgba(15, 23, 42, 0.08);
+  --border-medium: rgba(15, 23, 42, 0.16);
+  --border-focus: rgba(99, 102, 241, 0.6);
+  --border-highlight: rgba(15, 23, 42, 0.12);
+
+  /* Acentos de Marca */
+  --accent-primary: #4f46e5;
+  --accent-primary-hover: #4338ca;
+  --accent-primary-light: rgba(79, 70, 229, 0.1);
+  --accent-glow: rgba(79, 70, 229, 0.2);
+
+  /* Estados con fondos claros */
+  --status-success-bg: rgba(16, 185, 129, 0.1);
+  --status-success-border: rgba(16, 185, 129, 0.3);
+  --status-warning-bg: rgba(245, 158, 11, 0.1);
+  --status-warning-border: rgba(245, 158, 11, 0.3);
+  --status-danger-bg: rgba(239, 68, 68, 0.1);
+  --status-danger-border: rgba(239, 68, 68, 0.3);
+  --status-info-bg: rgba(59, 130, 246, 0.1);
+  --status-info-border: rgba(59, 130, 246, 0.3);
+
+  /* Sombras y Elevaciones */
+  --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.08);
+  --shadow-md: 0 10px 25px -5px rgba(15, 23, 42, 0.1), 0 8px 10px -6px rgba(15, 23, 42, 0.06);
+  --shadow-lg: 0 20px 35px -10px rgba(15, 23, 42, 0.14);
+  --shadow-glow: 0 0 20px rgba(79, 70, 229, 0.18);
+  --backdrop-blur: blur(12px);
+}

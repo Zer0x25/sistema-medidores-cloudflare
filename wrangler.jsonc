@@ -1,0 +1,30 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "sistema-medidores-edge",
+  "main": "src/index.ts",
+  "compatibility_date": "2025-07-18",
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
+  "observability": {
+    "enabled": true
+  },
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "sistema-medidores-db",
+      "database_id": "local-sistema-medidores-db",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "vars": {
+    "NODE_ENV": "development",
+    "JWT_SECRET": "desarrollo_local_jwt_secret_minimo_32_caracteres_cloudflare",
+    "JWT_EXPIRES_IN": "8h",
+    "LOG_LEVEL": "info"
+  }
+}

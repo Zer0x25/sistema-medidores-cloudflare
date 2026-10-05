@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f172a"/>
+      <stop offset="100%" stop-color="#1e293b"/>
+    </linearGradient>
+    <linearGradient id="primaryGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0ea5e9"/>
+      <stop offset="100%" stop-color="#38bdf8"/>
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="8" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+  <!-- Background Rounded Rect -->
+  <rect width="512" height="512" rx="112" fill="url(#bgGrad)"/>
+  
+  <!-- Outer Gauge Ring -->
+  <circle cx="256" cy="256" r="170" fill="none" stroke="#334155" stroke-width="24" stroke-dasharray="801" stroke-dashoffset="200" stroke-linecap="round"/>
+  
+  <!-- Active Glow Arc -->
+  <circle cx="256" cy="256" r="170" fill="none" stroke="url(#primaryGrad)" stroke-width="24" stroke-dasharray="801" stroke-dashoffset="420" stroke-linecap="round" filter="url(#glow)"/>
+
+  <!-- Gauge Hub -->
+  <circle cx="256" cy="256" r="32" fill="#0ea5e9"/>
+  <circle cx="256" cy="256" r="16" fill="#f8fafc"/>
+
+  <!-- Gauge Pointer Needle -->
+  <path d="M 256 256 L 350 162" stroke="#38bdf8" stroke-width="12" stroke-linecap="round" filter="url(#glow)"/>
+  
+  <!-- Digital Reading Box -->
+  <rect x="176" y="320" width="160" height="48" rx="8" fill="#1e293b" stroke="#0ea5e9" stroke-width="2"/>
+  <text x="256" y="352" font-family="system-ui, sans-serif" font-size="22" font-weight="bold" fill="#38bdf8" text-anchor="middle">8420.5</text>
+</svg>

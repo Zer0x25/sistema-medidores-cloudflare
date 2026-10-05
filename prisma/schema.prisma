@@ -1,0 +1,259 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
+}
+
+model Usuario {
+  id           String               @id @default(uuid())
+  email        String               @unique
+  passwordHash String
+  nombre       String
+  rol          String               @default("OPERADOR") // ADMIN, SUPERVISOR, OPERADOR
+  activo       Boolean              @default(true)
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+  asignaciones AsignacionOperador[]
+  suscripciones SuscripcionPush[]
+
+  @@map("usuarios")
+}
+
+model Instalacion {
+  id           String                   @id @default(uuid())
+  nombre       String                   @unique
+  ubicacion    String
+  activa       Boolean                  @default(true)
+  createdAt    DateTime                 @default(now())
+  updatedAt    DateTime                 @updatedAt
+  operadores   AsignacionOperador[]
+  medidores    Medidor[]
+  facturas     FacturaServicio[]
+  incidentes   IncidenteAlerta[]
+
+  @@map("instalaciones")
+}
+
+model AsignacionOperador {
+  id            String       @id @default(uuid())
+  instalacionId String
+  usuarioId     String
+  createdAt     DateTime     @default(now())
+  instalacion   Instalacion  @relation(fields: [instalacionId], references: [id])
+  usuario       Usuario?     @relation(fields: [usuarioId], references: [id])
+
+  @@unique([instalacionId, usuarioId])
+  @@map("asignaciones_operadores")
+}
+
+model TipoMedidor {
+  id           String    @id @default(uuid())
+  nombre       String    @unique
+  recurso      String    // AGUA, LUZ, GAS, PETROLEO, OTRO
+  unidad       String    // LITROS, M3, KWH, PORCENTAJE, OTRO
+  tipoMedicion String    // ACUMULATIVO, INSTANTANEO, NIVEL
+  activo       Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  medidores    Medidor[]
+
+  @@map("tipos_medidor")
+}
+
+model Medidor {
+  id                      String                  @id @default(uuid())
+  instalacionId           String
+  tipoMedidorId           String
+  codigo                  String                  @unique
+  numeroSerie             String?
+  ubicacionInterna        String
+  activo                  Boolean                 @default(true)
+  precintoActual          String?
+  fechaUltimaCalibracion  DateTime?
+  fechaProximaCalibracion DateTime?
+  createdAt               DateTime                @default(now())
+  updatedAt               DateTime                @updatedAt
+  instalacion             Instalacion             @relation(fields: [instalacionId], references: [id])
+  tipoMedidor             TipoMedidor             @relation(fields: [tipoMedidorId], references: [id])
+  lecturas                Lectura[]
+  incidentes              IncidenteAlerta[]
+  mantenimientos          RegistroMantenimiento[]
+
+  @@map("medidores")
+}
+
+model Lectura {
+  id           String    @id @default(uuid())
+  medidorId    String
+  operadorId   String
+  valor        Float
+  fechaLectura DateTime  @default(now())
+  notas        String?
+  createdAt    DateTime  @default(now())
+  medidor      Medidor   @relation(fields: [medidorId], references: [id])
+
+  @@unique([medidorId, fechaLectura])
+  @@index([medidorId, fechaLectura(sort: Desc)])
+  @@map("lecturas")
+}
+
+model FacturaServicio {
+  id                 String      @id @default(uuid())
+  instalacionId      String
+  recurso            String      // AGUA, LUZ, GAS, PETROLEO, OTRO
+  periodoInicio      DateTime
+  periodoFin         DateTime
+  consumoFacturado   Float
+  unidad             String      // M3, KWH, LITROS, etc.
+  montoTotal         Float?
+  numeroFactura      String?
+  estadoConciliacion String      @default("PENDIENTE") // PENDIENTE, CONCILIADO, DISCREPANCIA
+  consumoMedido      Float?
+  diferenciaConsumo  Float?
+  porcentajeDesvio   Float?
+  notas              String?
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
+  instalacion        Instalacion @relation(fields: [instalacionId], references: [id])
+
+  @@map("facturas_servicio")
+}
+
+model ReglaAlerta {
+  id          String            @id @default(uuid())
+  nombre      String
+  tipo        String            // SALTO_CONSUMO, FUGA_PROBABLE, SIN_REPORTE
+  recurso     String?           // AGUA, LUZ, GAS, PETROLEO o null
+  umbralValor Float             // ej. 50 para salto (+50%), 48 para horas sin reporte, etc.
+  activa      Boolean           @default(true)
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  incidentes  IncidenteAlerta[]
+
+  @@map("reglas_alerta")
+}
+
+model IncidenteAlerta {
+  id              String       @id @default(uuid())
+  reglaId         String?
+  medidorId       String
+  instalacionId   String
+  tipo            String       // SALTO_CONSUMO, FUGA_PROBABLE, SIN_REPORTE
+  severidad       String       @default("WARNING") // INFO, WARNING, CRITICAL
+  mensaje         String
+  estado          String       @default("ABIERTO") // ABIERTO, EN_REVISION, RESUELTO
+  valorDetectado  Float?
+  fechaDeteccion  DateTime     @default(now())
+  fechaResolucion DateTime?
+  notasResolucion String?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  regla           ReglaAlerta? @relation(fields: [reglaId], references: [id])
+  medidor         Medidor      @relation(fields: [medidorId], references: [id])
+  instalacion     Instalacion  @relation(fields: [instalacionId], references: [id])
+
+  @@map("incidentes_alerta")
+}
+
+model RegistroMantenimiento {
+  id                     String    @id @default(uuid())
+  medidorId              String
+  tipo                   String    // CALIBRACION, CAMBIO_PRECINTO, REEMPLAZO_EQUIPO, INSPECCION, BAJA_TECNICA
+  fechaMantenimiento     DateTime  @default(now())
+  tecnicoResponsable     String
+  numeroPrecintoAnterior String?
+  numeroPrecintoNuevo    String?
+  proximaCalibracion     DateTime?
+  certificadoCalibracion String?
+  lecturaRetiro          Float?
+  motivoBaja             String?
+  nuevoMedidorCodigo     String?
+  observaciones          String?
+  createdAt              DateTime  @default(now())
+  medidor                Medidor   @relation(fields: [medidorId], references: [id])
+
+  @@map("registros_mantenimiento")
+}
+
+model AuditoriaEvento {
+  id        String   @id @default(uuid())
+  usuarioId String?
+  accion    String
+  entidad   String
+  entidadId String
+  detalles  String?
+  ip        String?
+  createdAt DateTime @default(now())
+
+  @@index([entidad, entidadId])
+  @@index([accion])
+  @@index([createdAt(sort: Desc)])
+  @@map("auditoria_eventos")
+}
+
+model WebhookEndpoint {
+  id          String           @id @default(uuid())
+  url         String
+  descripcion String
+  secret      String?
+  eventos     String           @default("*")
+  activo      Boolean          @default(true)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  entregas    WebhookEntrega[]
+
+  @@map("webhook_endpoints")
+}
+
+model WebhookEntrega {
+  id         String          @id @default(uuid())
+  webhookId  String
+  evento     String
+  url        String
+  statusCode Int?
+  exitoso    Boolean
+  error      String?
+  duracionMs Int?
+  createdAt  DateTime        @default(now())
+  webhook    WebhookEndpoint @relation(fields: [webhookId], references: [id], onDelete: Cascade)
+
+  @@index([webhookId, createdAt(sort: Desc)])
+  @@map("webhook_entregas")
+}
+
+model SuscripcionPush {
+  id        String   @id @default(uuid())
+  usuarioId String?
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  activa    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  usuario   Usuario? @relation(fields: [usuarioId], references: [id], onDelete: SetNull)
+
+  @@index([usuarioId])
+  @@map("suscripciones_push")
+}
+
+model NotificacionHistorial {
+  id           String   @id @default(uuid())
+  canal        String   // TELEGRAM, WEB_PUSH
+  destinatario String   // chatId o endpoint abreviado
+  evento       String
+  severidad    String   // INFO, WARNING, CRITICAL
+  titulo       String
+  exitoso      Boolean
+  statusCode   Int?
+  error        String?
+  duracionMs   Int?
+  createdAt    DateTime @default(now())
+
+  @@index([canal, createdAt(sort: Desc)])
+  @@index([evento])
+  @@map("notificaciones_historial")
+}
