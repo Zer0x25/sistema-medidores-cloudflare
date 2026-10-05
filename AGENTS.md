@@ -162,3 +162,19 @@ Toda decisión arquitectónica de este proyecto se encuentra consolidada en 5 re
 - **[ADR 0003](file:///home/zer0x/proyectos/Mi-app-test-SSD-ADR/deploy-cloudflare/docs/adr/0003-seguridad-zero-trust-rbac-auditoria-e-integraciones.md):** Seguridad Zero-Trust, Criptografía Edge, RBAC, Auditoría e Integraciones Salientes.
 - **[ADR 0004](file:///home/zer0x/proyectos/Mi-app-test-SSD-ADR/deploy-cloudflare/docs/adr/0004-simetria-de-contratos-cero-leaks-y-testing-automatizado.md):** Simetría de Contratos, Mandato Cero Leaks y Testing Automatizado en Edge.
 
+---
+
+## 🔄 9. Protocolo de Sincronización Multi-Repo (Upstream -> Edge)
+
+1. **Aislamiento Absoluto de Repositorios:**
+   - Este directorio posee su propio repositorio Git con origen independiente (`https://github.com/Zer0x25/sistema-medidores-cloudflare.git`).
+   - Jamás se deben mezclar commits del repositorio padre (`Mi-app-test-SSD-ADR`) con commits de este proyecto.
+
+2. **Flujo "Upstream Milestone Sync":**
+   - Las nuevas funcionalidades creadas en el repo padre se registran en el backlog de [STATE.md](file:///home/zer0x/proyectos/Mi-app-test-SSD-ADR/deploy-cloudflare/STATE.md) (`## 📥 Backlog de Sincronización desde Upstream`).
+   - La migración o adaptación a Cloudflare se ejecuta en **sesiones de trabajo dedicadas** dentro de esta carpeta, implementando con las primitivas de Hono, D1, KV y superando `./scripts/verify.sh`.
+
+3. **Soberanía Completa:**
+   - Al copiar o clonar esta carpeta en otro ordenador, el proyecto es 100% autónomo y no requiere conexión ni sincronización con el repositorio original.
+
+

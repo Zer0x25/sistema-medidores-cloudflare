@@ -46,6 +46,15 @@ Este archivo actúa como memoria persistente y tablero de control para humanos y
 
 ---
 
+## 📥 Backlog de Sincronización desde Upstream (Repo Padre)
+
+Este registro almacena los hitos o funcionalidades cerradas en el repo padre que están pendientes de ser portadas a Cloudflare Edge en sesiones dedicadas:
+
+- [x] **Hito 1 a 15 (Núcleo y Simetría):** Portado al 100% y certificado en producción (`metric.zer0x.org`).
+- [ ] *(Pendiente)*: Cuando se completen nuevos hitos en el repo padre (ej: Hito 16), anótalos aquí con sus rutas, tablas e invariantes antes de iniciar la sesión de migración.
+
+---
+
 ## 📜 Registro Canónico de Arquitectura (5 ADRs Maestros)
 
 El proyecto consolida todas las lecciones y patrones en 5 decisiones maestras inmutables en `docs/adr/`:
