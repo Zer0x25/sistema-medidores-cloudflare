@@ -6,6 +6,12 @@
   "compatibility_flags": [
     "nodejs_compat"
   ],
+  "routes": [
+    {
+      "pattern": "metric.zer0x.org",
+      "custom_domain": true
+    }
+  ],
   "observability": {
     "enabled": true
   },
@@ -17,18 +23,18 @@
     {
       "binding": "DB",
       "database_name": "sistema-medidores-db",
-      "database_id": "local-sistema-medidores-db",
+      "database_id": "6ea20176-bed0-44b1-8126-01d6a232e082",
       "migrations_dir": "migrations"
     }
   ],
   "kv_namespaces": [
     {
       "binding": "KV_CACHE",
-      "id": "sistema_medidores_kv_cache"
+      "id": "0ac2ac688f814f41b294c7b509759009"
     }
   ],
   "vars": {
-    "NODE_ENV": "development",
+    "NODE_ENV": "production",
     "JWT_SECRET": "desarrollo_local_jwt_secret_minimo_32_caracteres_cloudflare",
     "JWT_EXPIRES_IN": "8h",
     "LOG_LEVEL": "info"
