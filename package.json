@@ -11,7 +11,8 @@
     "prisma:generate": "prisma generate",
     "db:migrate:local": "wrangler d1 migrations apply sistema-medidores-db --local",
     "db:migrate:remote": "wrangler d1 migrations apply sistema-medidores-db --remote",
-    "db:seed:local": "wrangler d1 execute sistema-medidores-db --local --file=./migrations/0002_seed.sql"
+    "db:seed:local": "wrangler d1 execute sistema-medidores-db --local --file=./migrations/0002_seed.sql",
+    "test:contract": "node scripts/test-contract-symmetry.mjs"
   },
   "dependencies": {
     "@hono/zod-validator": "^0.4.3",
