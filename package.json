@@ -9,8 +9,8 @@
     "deploy": "wrangler deploy",
     "cf-typegen": "wrangler types",
     "prisma:generate": "prisma generate",
-    "db:migrate:local": "wrangler d1 migrations apply sistema-medidores-db --local -y",
-    "db:migrate:remote": "wrangler d1 migrations apply sistema-medidores-db --remote -y",
+    "db:migrate:local": "wrangler d1 migrations apply sistema-medidores-db --local",
+    "db:migrate:remote": "wrangler d1 migrations apply sistema-medidores-db --remote",
     "db:seed:local": "wrangler d1 execute sistema-medidores-db --local --file=./migrations/0002_seed.sql"
   },
   "dependencies": {
