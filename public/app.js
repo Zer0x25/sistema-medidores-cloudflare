@@ -648,7 +648,8 @@ async function cargarSelectorOperador() {
     instalaciones.forEach((inst) => {
       const opt = document.createElement("option");
       opt.value = inst.id;
-      opt.textContent = `${inst.nombre} (${inst.direccion})`;
+      const loc = inst.ubicacion || inst.direccion || "";
+      opt.textContent = loc ? `${inst.nombre} (${loc})` : inst.nombre;
       select.appendChild(opt);
     });
 
@@ -821,7 +822,8 @@ async function cargarSelectsGlobales() {
     if (selTipo) {
       selTipo.innerHTML = '<option value="">Selecciona tipo...</option>';
       tiposMedidorCache.forEach((t) => {
-        selTipo.innerHTML += `<option value="${t.id}">${t.nombre} (${t.recurso} - ${t.unidadMedida})</option>`;
+        const u = t.unidadMedida || t.unidad || "";
+        selTipo.innerHTML += `<option value="${t.id}">${t.nombre} (${t.recurso}${u ? ' - ' + u : ''})</option>`;
       });
     }
   } catch (err) {

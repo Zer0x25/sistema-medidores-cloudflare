@@ -23,6 +23,7 @@ instalacionesRouter.get("/api/instalaciones", async (c) => {
 
   const formatted = results.map(row => ({
     ...row,
+    direccion: row.ubicacion,
     activa: Boolean(row.activa),
   }));
 
@@ -62,7 +63,7 @@ instalacionesRouter.post("/api/instalaciones", async (c) => {
       detalles: { nombre, ubicacion },
     });
 
-    return c.json({ id, nombre, ubicacion, activa: true }, 201);
+    return c.json({ id, nombre, ubicacion, direccion: ubicacion, activa: true }, 201);
   } catch (err) {
     return c.json({ error: "INSTALACION_DUPLICADA", message: "Ya existe una instalación con ese nombre" }, 409);
   }
@@ -71,11 +72,18 @@ instalacionesRouter.post("/api/instalaciones", async (c) => {
 // Obtener por ID
 instalacionesRouter.get("/api/instalaciones/:id", async (c) => {
   const id = c.req.param("id");
-  const inst = await c.env.DB.prepare("SELECT * FROM instalaciones WHERE id = ?").bind(id).first();
+  const inst = await c.env.DB.prepare("SELECT * FROM instalaciones WHERE id = ?").bind(id).first<{
+    id: string;
+    nombre: string;
+    ubicacion: string;
+    activa: number;
+    createdAt: string;
+    updatedAt: string;
+  }>();
   if (!inst) {
     return c.json({ error: "NOT_FOUND", message: "Instalación no encontrada" }, 404);
   }
-  return c.json({ ...inst, activa: Boolean(inst.activa) });
+  return c.json({ ...inst, direccion: inst.ubicacion, activa: Boolean(inst.activa) });
 });
 
 // Asignar operador a instalación
@@ -148,7 +156,7 @@ instalacionesRouter.get("/api/instalaciones/operador/:usuarioId", async (c) => {
     WHERE a.usuarioId = ? AND i.activa = 1
   `)
     .bind(usuarioId)
-    .all();
+    .all<{ id: string; nombre: string; ubicacion: string; activa: number }>();
 
-  return c.json(results.map(r => ({ ...r, activa: Boolean(r.activa) })));
+  return c.json(results.map(r => ({ ...r, direccion: r.ubicacion, activa: Boolean(r.activa) })));
 });

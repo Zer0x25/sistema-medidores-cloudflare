@@ -176,18 +176,20 @@ const CrearTipoMedidorSchema = z.object({
 });
 
 // 3. Tipos de medidores
-medidoresRouter.get("/api/tipos-medidor", async (c) => {
+const fetchTipos = async (c: any) => {
   const { results } = await c.env.DB.prepare(
     "SELECT id, nombre, recurso, unidad, tipoMedicion, activo FROM tipos_medidor WHERE activo = 1 ORDER BY nombre ASC"
-  ).all();
-  return c.json(results);
-});
-medidoresRouter.get("/api/medidores/tipos", async (c) => {
-  const { results } = await c.env.DB.prepare(
-    "SELECT id, nombre, recurso, unidad, tipoMedicion, activo FROM tipos_medidor WHERE activo = 1 ORDER BY nombre ASC"
-  ).all();
-  return c.json(results);
-});
+  ).all<{ id: string; nombre: string; recurso: string; unidad: string; tipoMedicion: string; activo: number }>();
+
+  return c.json(results.map(r => ({
+    ...r,
+    unidadMedida: r.unidad,
+    activo: Boolean(r.activo),
+  })));
+};
+
+medidoresRouter.get("/api/tipos-medidor", fetchTipos);
+medidoresRouter.get("/api/medidores/tipos", fetchTipos);
 
 const handleCrearTipo = async (c: any) => {
   const user = c.get("user");
@@ -225,7 +227,7 @@ const handleCrearTipo = async (c: any) => {
     detalles: parsed.data,
   });
 
-  return c.json({ id, nombre, recurso, unidad, tipoMedicion, activo: true }, 201);
+  return c.json({ id, nombre, recurso, unidad, unidadMedida: unidad, tipoMedicion, activo: true }, 201);
 };
 
 medidoresRouter.post("/api/tipos-medidor", handleCrearTipo);
