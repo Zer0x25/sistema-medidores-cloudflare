@@ -39,7 +39,7 @@ reportesRouter.get("/api/reportes/consumo-instalacion", async (c) => {
   return c.json(results);
 });
 
-// Registrar factura de servicio
+// Registrar factura de servicio y conciliar inmediatamente
 reportesRouter.post("/api/reportes/facturas", async (c) => {
   const user = c.get("user");
   if (!user || user.rol !== "ADMIN") return c.json({ error: "FORBIDDEN", message: "Permisos insuficientes" }, 403);
@@ -51,17 +51,34 @@ reportesRouter.post("/api/reportes/facturas", async (c) => {
   const id = crypto.randomUUID();
   const data = parsed.data;
 
+  // Calcular consumo medido por medidores de esa instalación y recurso en el período
+  const medicion = await c.env.DB.prepare(`
+    SELECT COALESCE(MAX(l.valor) - MIN(l.valor), 0) as consumoMedido
+    FROM lecturas l
+    JOIN medidores m ON l.medidorId = m.id
+    JOIN tipos_medidor t ON m.tipoMedidorId = t.id
+    WHERE m.instalacionId = ? AND t.recurso = ?
+      AND l.fechaLectura >= ? AND l.fechaLectura <= ?
+  `)
+    .bind(data.instalacionId, data.recurso, data.periodoInicio, data.periodoFin)
+    .first<{ consumoMedido: number }>();
+
+  const consumoMedido = medicion?.consumoMedido || 0;
+  const diferencia = data.consumoFacturado - consumoMedido;
+  const porcentajeDesvio = consumoMedido > 0 ? (diferencia / consumoMedido) * 100 : 0;
+  const estado = (consumoMedido > 0 && Math.abs(porcentajeDesvio) <= 5.0) ? "CONCILIADO" : "DISCREPANCIA";
+
   await c.env.DB.prepare(`
     INSERT INTO facturas_servicio (
       id, instalacionId, recurso, periodoInicio, periodoFin, consumoFacturado,
-      unidad, montoTotal, numeroFactura, estadoConciliacion, notas, createdAt, updatedAt
+      unidad, montoTotal, numeroFactura, estadoConciliacion, consumoMedido, diferenciaConsumo, porcentajeDesvio, notas, createdAt, updatedAt
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDIENTE', ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
   `)
     .bind(
       id, data.instalacionId, data.recurso, data.periodoInicio, data.periodoFin,
       data.consumoFacturado, data.unidad, data.montoTotal || null,
-      data.numeroFactura || null, data.notas || null
+      data.numeroFactura || null, estado, consumoMedido, diferencia, porcentajeDesvio, data.notas || null
     )
     .run();
 
@@ -71,10 +88,17 @@ reportesRouter.post("/api/reportes/facturas", async (c) => {
     accion: "REGISTRO_FACTURA_SERVICIO",
     entidad: "FacturaServicio",
     entidadId: id,
-    detalles: data,
+    detalles: { ...data, estadoConciliacion: estado },
   });
 
-  return c.json({ id, ...data, estadoConciliacion: "PENDIENTE" }, 201);
+  return c.json({
+    id,
+    ...data,
+    consumoMedido,
+    diferenciaConsumo: diferencia,
+    porcentajeDesvio,
+    estadoConciliacion: estado,
+  }, 201);
 });
 
 // Listar facturas

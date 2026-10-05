@@ -218,9 +218,9 @@ async function handleLoginSubmit(e) {
     }
   } catch (err) {
     if (errAlert && errMsg) {
-      if (err.statusCode === 401) {
-        errMsg.textContent = "Credenciales incorrectas. Verifique correo o contraseña.";
-      } else if (err.statusCode === 429) {
+      if (err.status === 401 || err.statusCode === 401) {
+        errMsg.textContent = "Correo o contraseña incorrectos.";
+      } else if (err.status === 429 || err.statusCode === 429) {
         errMsg.textContent = err.message || "Demasiados intentos. Por favor espere unos momentos.";
       } else {
         errMsg.textContent = err.message || "No se pudo conectar con el servidor.";

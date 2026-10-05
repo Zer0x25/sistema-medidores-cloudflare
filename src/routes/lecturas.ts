@@ -95,33 +95,91 @@ lecturasRouter.post("/api/lecturas", async (c) => {
 
 // Sincronización en lote offline (SyncManager PWA)
 lecturasRouter.post("/api/lecturas/batch-sync", async (c) => {
-  const body = await c.req.json() as { items?: Array<{ medidorId: string; valor: number; fechaLectura: string; notas?: string }> };
-  if (!body.items || !Array.isArray(body.items)) {
-    return c.json({ error: "BAD_REQUEST", message: "Formato de lote inválido" }, 400);
+  const body = await c.req.json() as {
+    lecturas?: Array<{
+      localId?: string;
+      medidorId: string;
+      operadorId?: string;
+      valor: number;
+      fechaLectura?: string;
+      notas?: string;
+    }>;
+    items?: Array<any>;
+  };
+
+  const list = body.lecturas || body.items;
+  if (!list || !Array.isArray(list)) {
+    return c.json({ error: "BAD_REQUEST", message: "Formato de lote inválido: debe contener un arreglo de 'lecturas'" }, 400);
   }
 
-  const synced: string[] = [];
-  const rejected: Array<{ item: unknown; error: string }> = [];
+  const results: Array<{ localId?: string; status: "SYNCED" | "REJECTED"; lectura?: any; error?: { code?: string; message: string } }> = [];
+  let syncedCount = 0;
+  let rejectedCount = 0;
 
-  for (const item of body.items) {
+  for (const item of list) {
     try {
+      const medidor = await c.env.DB.prepare(`
+        SELECT m.id, m.activo, t.tipoMedicion
+        FROM medidores m
+        JOIN tipos_medidor t ON m.tipoMedidorId = t.id
+        WHERE m.id = ?
+      `).bind(item.medidorId).first<{ id: string; activo: number; tipoMedicion: string }>();
+
+      if (!medidor) {
+        throw new Error(`Medidor con ID '${item.medidorId}' no encontrado`);
+      }
+
+      if (medidor.tipoMedicion === "ACUMULATIVO") {
+        const ultima = await c.env.DB.prepare(
+          "SELECT valor FROM lecturas WHERE medidorId = ? ORDER BY fechaLectura DESC LIMIT 1"
+        ).bind(item.medidorId).first<{ valor: number }>();
+
+        if (ultima && item.valor < ultima.valor) {
+          throw new Error(`Lectura decreciente rechazada: ${item.valor} < ${ultima.valor}`);
+        }
+      }
+
       const id = crypto.randomUUID();
+      const fecha = item.fechaLectura ? new Date(item.fechaLectura).toISOString() : new Date().toISOString();
+      const operadorId = item.operadorId || "usr-oper-01";
+
       await c.env.DB.prepare(`
         INSERT INTO lecturas (id, medidorId, operadorId, valor, fechaLectura, notas, createdAt)
         VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-      `)
-        .bind(id, item.medidorId, "usr-oper-01", item.valor, item.fechaLectura, item.notas || null)
-        .run();
-      synced.push(id);
+      `).bind(id, item.medidorId, operadorId, item.valor, fecha, item.notas || null).run();
+
+      const lecturaCreada = {
+        id,
+        medidorId: item.medidorId,
+        operadorId,
+        valor: item.valor,
+        fechaLectura: fecha,
+        notas: item.notas,
+      };
+
+      results.push({
+        localId: item.localId,
+        status: "SYNCED",
+        lectura: lecturaCreada,
+      });
+      syncedCount++;
     } catch (err) {
-      rejected.push({ item, error: err instanceof Error ? err.message : "Error al insertar" });
+      rejectedCount++;
+      results.push({
+        localId: item.localId,
+        status: "REJECTED",
+        error: {
+          code: "VALIDATION_ERROR",
+          message: err instanceof Error ? err.message : String(err),
+        },
+      });
     }
   }
 
   return c.json({
-    syncedCount: synced.length,
-    rejectedCount: rejected.length,
-    synced,
-    rejected,
+    totalProcessed: list.length,
+    syncedCount,
+    rejectedCount,
+    results,
   });
 });

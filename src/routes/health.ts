@@ -34,7 +34,7 @@ healthRouter.get("/readyz", async (c) => {
 });
 
 // API Health
-healthRouter.get("/api/health", async (c) => {
+healthRouter.on(["GET", "POST"], "/api/health", async (c) => {
   const t0 = performance.now();
   let dbStatus = "connected";
   try {

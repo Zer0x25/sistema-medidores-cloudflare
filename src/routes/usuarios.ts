@@ -100,12 +100,12 @@ usuariosRouter.post("/api/auth/login", async (c) => {
     }>();
 
   if (!usuario || usuario.activo !== 1) {
-    return c.json({ error: "UNAUTHORIZED", message: "Credenciales inválidas o usuario inactivo" }, 401);
+    return c.json({ error: "UNAUTHORIZED", message: "Correo electrónico o contraseña incorrectos." }, 401);
   }
 
   const valida = await verifyPassword(password, usuario.passwordHash);
   if (!valida) {
-    return c.json({ error: "UNAUTHORIZED", message: "Credenciales inválidas" }, 401);
+    return c.json({ error: "UNAUTHORIZED", message: "Correo electrónico o contraseña incorrectos." }, 401);
   }
 
   const userPayload = {

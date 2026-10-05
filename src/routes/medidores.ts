@@ -123,8 +123,18 @@ medidoresRouter.post("/api/medidores", async (c) => {
 
     return c.json({ id, codigo, instalacionId, tipoMedidorId, activo: true }, 201);
   } catch {
-    return c.json({ error: "CODIGO_DUPLICADO", message: "El código de medidor ya existe" }, 409);
+    return c.json({
+      error: "MEDIDOR_CODIGO_DUPLICADO",
+      message: `Ya existe un medidor con el código '${codigo}'.`,
+    }, 409);
   }
+});
+
+const CrearTipoMedidorSchema = z.object({
+  nombre: z.string().min(2),
+  recurso: z.enum(["AGUA", "LUZ", "GAS", "PETROLEO"]),
+  unidad: z.string().min(1),
+  tipoMedicion: z.enum(["ACUMULATIVO", "INTERVALO", "PULSOS", "NIVEL"]),
 });
 
 // 3. Tipos de medidores
@@ -140,6 +150,48 @@ medidoresRouter.get("/api/medidores/tipos", async (c) => {
   ).all();
   return c.json(results);
 });
+
+const handleCrearTipo = async (c: any) => {
+  const user = c.get("user");
+  if (!user || (user.rol !== "ADMIN" && user.rol !== "SUPERVISOR")) {
+    return c.json({ error: "FORBIDDEN", message: "Permisos insuficientes" }, 403);
+  }
+
+  const body = await c.req.json();
+  const parsed = CrearTipoMedidorSchema.safeParse(body);
+  if (!parsed.success) {
+    return c.json({ error: "VALIDATION_ERROR", message: "Datos de tipo de medidor inválidos", details: parsed.error.issues }, 400);
+  }
+
+  const { nombre, recurso, unidad, tipoMedicion } = parsed.data;
+  const existente = await c.env.DB.prepare("SELECT id FROM tipos_medidor WHERE nombre = ?").bind(nombre).first();
+  if (existente) {
+    return c.json({
+      error: "TIPO_MEDIDOR_NOMBRE_DUPLICADO",
+      message: `Ya existe un tipo de medidor con el nombre '${nombre}'.`,
+    }, 409);
+  }
+
+  const id = crypto.randomUUID();
+  await c.env.DB.prepare(`
+    INSERT INTO tipos_medidor (id, nombre, recurso, unidad, tipoMedicion, activo, createdAt, updatedAt)
+    VALUES (?, ?, ?, ?, ?, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+  `).bind(id, nombre, recurso, unidad, tipoMedicion).run();
+
+  await registrarAuditoria({
+    db: c.env.DB,
+    usuario: user,
+    accion: "CREAR_TIPO_MEDIDOR",
+    entidad: "TipoMedidor",
+    entidadId: id,
+    detalles: parsed.data,
+  });
+
+  return c.json({ id, nombre, recurso, unidad, tipoMedicion, activo: true }, 201);
+};
+
+medidoresRouter.post("/api/tipos-medidor", handleCrearTipo);
+medidoresRouter.post("/api/medidores/tipos", handleCrearTipo);
 
 // 4. Detalle de medidor
 medidoresRouter.get("/api/medidores/:id", async (c) => {

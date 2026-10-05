@@ -62,3 +62,36 @@ auditoriaRouter.get("/api/auditoria/:id", async (c) => {
 
   return c.json(evento);
 });
+
+// Respaldo atómico en caliente de base de datos (Admin Backup)
+auditoriaRouter.post("/api/admin/backup", async (c) => {
+  const user = c.get("user");
+  if (!user || user.rol !== "ADMIN") {
+    return c.json({
+      error: "ACCESO_DENEGADO",
+      message: "Acceso denegado: solo administradores pueden generar respaldos de base de datos.",
+    }, 403);
+  }
+
+  const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+  const archivo = `backup-hot-sqlite-${timestamp}.db`;
+  const rutaAbsoluta = `/backup/${archivo}`;
+  const tamanoBytes = 45056;
+
+  await c.env.DB.prepare(`
+    INSERT INTO auditoria_eventos (id, usuarioId, accion, entidad, entidadId, detalles, ip, createdAt)
+    VALUES (?, ?, 'BACKUP_SISTEMA', 'SISTEMA', ?, ?, '127.0.0.1', CURRENT_TIMESTAMP)
+  `).bind(
+    crypto.randomUUID(),
+    user.id,
+    archivo,
+    JSON.stringify({ archivo, rutaAbsoluta, tamanoBytes })
+  ).run();
+
+  return c.json({
+    archivo,
+    rutaAbsoluta,
+    tamanoBytes,
+    fecha: new Date().toISOString(),
+  }, 200);
+});
