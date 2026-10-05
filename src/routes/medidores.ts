@@ -38,6 +38,7 @@ const BajaTecnicaSchema = z.object({
 // 1. Listar medidores
 medidoresRouter.get("/api/medidores", async (c) => {
   const activoQuery = c.req.query("activo");
+  const instalacionId = c.req.query("instalacionId");
   let sql = `
     SELECT 
       m.id, m.codigo, m.numeroSerie, m.ubicacionInterna, m.activo, m.precintoActual,
@@ -51,39 +52,76 @@ medidoresRouter.get("/api/medidores", async (c) => {
     JOIN tipos_medidor t ON m.tipoMedidorId = t.id
   `;
 
+  const whereClauses: string[] = [];
   if (activoQuery !== undefined) {
-    sql += ` WHERE m.activo = ${activoQuery === "true" ? 1 : 0}`;
+    whereClauses.push(`m.activo = ${activoQuery === "true" ? 1 : 0}`);
+  }
+  if (instalacionId) {
+    whereClauses.push(`m.instalacionId = '${instalacionId.replace(/'/g, "''")}'`);
+  }
+  if (whereClauses.length > 0) {
+    sql += ` WHERE ${whereClauses.join(" AND ")}`;
   }
   sql += " ORDER BY m.codigo ASC";
 
-  const { results } = await c.env.DB.prepare(sql).all();
+  const { results } = await c.env.DB.prepare(sql).all<{
+    id: string;
+    codigo: string;
+    numeroSerie: string | null;
+    ubicacionInterna: string;
+    activo: number;
+    precintoActual: string | null;
+    fechaUltimaCalibracion: string | null;
+    fechaProximaCalibracion: string | null;
+    createdAt: string;
+    instalacionId: string;
+    instalacionNombre: string;
+    tipoMedidorId: string;
+    tipoNombre: string;
+    recurso: string;
+    unidad: string;
+    tipoMedicion: string;
+    ultimaLecturaValor: number | null;
+    ultimaLecturaFecha: string | null;
+  }>();
 
-  const formatted = results.map((row) => ({
-    id: row.id,
-    codigo: row.codigo,
-    numeroSerie: row.numeroSerie,
-    ubicacionInterna: row.ubicacionInterna,
-    activo: Boolean(row.activo),
-    precintoActual: row.precintoActual,
-    fechaUltimaCalibracion: row.fechaUltimaCalibracion,
-    fechaProximaCalibracion: row.fechaProximaCalibracion,
-    createdAt: row.createdAt,
-    instalacion: {
-      id: row.instalacionId,
-      nombre: row.instalacionNombre,
-    },
-    tipoMedidor: {
-      id: row.tipoMedidorId,
-      nombre: row.tipoNombre,
-      recurso: row.recurso,
-      unidad: row.unidad,
-      tipoMedicion: row.tipoMedicion,
-    },
-    ultimaLectura: row.ultimaLecturaValor !== null ? {
-      valor: row.ultimaLecturaValor,
-      fechaLectura: row.ultimaLecturaFecha,
-    } : null,
-  }));
+  const formatted = results.map((row) => {
+    let rawFecha = row.ultimaLecturaFecha ? row.ultimaLecturaFecha.trim() : null;
+    let isoFecha = rawFecha;
+    if (rawFecha && /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/.test(rawFecha)) {
+      isoFecha = rawFecha.replace(" ", "T") + (rawFecha.includes("Z") ? "" : "Z");
+    }
+
+    return {
+      id: row.id,
+      codigo: row.codigo,
+      numeroSerie: row.numeroSerie,
+      ubicacionInterna: row.ubicacionInterna,
+      activo: Boolean(row.activo),
+      precintoActual: row.precintoActual,
+      fechaUltimaCalibracion: row.fechaUltimaCalibracion,
+      fechaProximaCalibracion: row.fechaProximaCalibracion,
+      createdAt: row.createdAt,
+      instalacion: {
+        id: row.instalacionId,
+        nombre: row.instalacionNombre,
+      },
+      tipoMedidor: {
+        id: row.tipoMedidorId,
+        nombre: row.tipoNombre,
+        recurso: row.recurso,
+        unidad: row.unidad,
+        unidadMedida: row.unidad,
+        tipoMedicion: row.tipoMedicion,
+      },
+      ultimaLectura: row.ultimaLecturaValor !== null ? {
+        valor: row.ultimaLecturaValor,
+        fechaLectura: isoFecha,
+        timestamp: isoFecha,
+        fecha: isoFecha,
+      } : null,
+    };
+  });
 
   return c.json(formatted);
 });
@@ -218,12 +256,26 @@ medidoresRouter.get("/api/medidores/:id", async (c) => {
     "SELECT id, valor, fechaLectura, notas FROM lecturas WHERE medidorId = ? ORDER BY fechaLectura DESC LIMIT 10"
   )
     .bind(id)
-    .all();
+    .all<{ id: string; valor: number; fechaLectura: string; notas: string | null }>();
+
+  const mappedLecturas = lecturas.map((l) => {
+    let raw = l.fechaLectura ? l.fechaLectura.trim() : "";
+    let iso = raw;
+    if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/.test(raw)) {
+      iso = raw.replace(" ", "T") + (raw.includes("Z") ? "" : "Z");
+    }
+    return {
+      ...l,
+      fechaLectura: iso,
+      timestamp: iso,
+      fecha: iso,
+    };
+  });
 
   return c.json({
     ...medidor,
     activo: Boolean(medidor.activo),
-    lecturasRecientes: lecturas,
+    lecturasRecientes: mappedLecturas,
   });
 });
 

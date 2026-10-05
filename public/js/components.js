@@ -156,6 +156,46 @@ function getResourceMeta(recurso = "") {
 }
 
 /**
+ * Parsea de manera segura cualquier fecha (ISO, SQLite 'YYYY-MM-DD HH:MM:SS', timestamp numérico, objeto Date).
+ */
+function parseDate(raw) {
+  if (!raw) return null;
+  if (raw instanceof Date) {
+    return isNaN(raw.getTime()) ? null : raw;
+  }
+  if (typeof raw === "number") {
+    const d = new Date(raw);
+    return isNaN(d.getTime()) ? null : d;
+  }
+  if (typeof raw === "string") {
+    let cleaned = raw.trim();
+    if (!cleaned) return null;
+    // Si viene de SQLite como "YYYY-MM-DD HH:MM:SS", convertir espacio a 'T' y asumir UTC si no tiene timezone
+    if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/.test(cleaned)) {
+      cleaned = cleaned.replace(" ", "T") + (cleaned.includes("Z") ? "" : "Z");
+    }
+    const d = new Date(cleaned);
+    if (!isNaN(d.getTime())) return d;
+    const fallback = new Date(raw);
+    if (!isNaN(fallback.getTime())) return fallback;
+  }
+  return null;
+}
+
+/**
+ * Formatea de forma segura fechas en formato chileno estándar sin arrojar 'Invalid Date'.
+ */
+function formatDate(raw, options = { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }, fallback = "--") {
+  const d = parseDate(raw);
+  if (!d) return fallback;
+  try {
+    return d.toLocaleString("es-CL", options);
+  } catch (e) {
+    return fallback;
+  }
+}
+
+/**
  * Formatea valores numéricos con separador de miles y decimales estándar.
  */
 function formatNumber(val, decimals = 2) {
@@ -178,13 +218,17 @@ function createMeterCard(medidor) {
     ? formatNumber(ultimaLectura.valor)
     : "Sin lecturas";
 
-  const lecturaFechaFormatted = ultimaLectura
-    ? new Date(ultimaLectura.timestamp).toLocaleString("es-CL", {
+  const rawFecha = ultimaLectura
+    ? (ultimaLectura.fechaLectura || ultimaLectura.timestamp || ultimaLectura.fecha || ultimaLectura.createdAt)
+    : null;
+
+  const lecturaFechaFormatted = rawFecha
+    ? formatDate(rawFecha, {
         day: "2-digit",
         month: "short",
         hour: "2-digit",
         minute: "2-digit",
-      })
+      }, "Requiere registro inicial")
     : "Requiere registro inicial";
 
   return `
@@ -272,12 +316,13 @@ function createConsumoCard(c) {
  */
 function createActivityItem(lec) {
   const meta = getResourceMeta(lec.medidor?.tipoMedidor?.recurso);
-  const fecha = new Date(lec.timestamp).toLocaleString("es-CL", {
+  const rawDate = lec.fechaLectura || lec.timestamp || lec.fecha || lec.createdAt;
+  const fecha = formatDate(rawDate, {
     day: "2-digit",
     month: "2-digit",
     hour: "2-digit",
     minute: "2-digit",
-  });
+  }, "--");
 
   return `
     <div class="activity-item">
@@ -364,6 +409,8 @@ function renderErrorState(container, message, onRetryCallback) {
 
 // Exportar funciones a la ventana global
 window.Components = {
+  parseDate,
+  formatDate,
   getResourceMeta,
   formatNumber,
   createMeterCard,

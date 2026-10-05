@@ -738,11 +738,21 @@ async function submitLectura(event) {
     return;
   }
 
+  let isoDate = new Date().toISOString();
+  if (fechaRaw) {
+    const d = new Date(fechaRaw);
+    if (!isNaN(d.getTime())) {
+      isoDate = d.toISOString();
+    }
+  }
+
   const payload = {
     medidorId,
-    operadorId: currentUser ? currentUser.id : "demo-operator",
+    operadorId: currentUser ? currentUser.id : "usr-oper-01",
     valor,
-    timestamp: new Date(fechaRaw).toISOString(),
+    fechaLectura: isoDate,
+    timestamp: isoDate,
+    notas: obs || undefined,
     observaciones: obs || undefined,
   };
 
@@ -1249,8 +1259,8 @@ async function cargarFacturasReportes() {
         estadoBadge = `<span class="badge badge-rose">⚠ DISCREPANCIA (&gt; 5%)</span>`;
       }
 
-      const iniStr = new Date(f.periodoInicio).toLocaleDateString("es-CL");
-      const finStr = new Date(f.periodoFin).toLocaleDateString("es-CL");
+      const iniStr = window.Components.formatDate(f.periodoInicio, { day: "2-digit", month: "2-digit", year: "numeric" });
+      const finStr = window.Components.formatDate(f.periodoFin, { day: "2-digit", month: "2-digit", year: "numeric" });
 
       return `
         <tr>
@@ -1362,7 +1372,7 @@ async function cargarAlertasIncidentes() {
           ? `<span class="badge badge-amber">EN REVISIÓN</span>`
           : `<span class="badge badge-emerald">RESUELTO</span>`;
 
-      const fechaStr = new Date(i.fechaDeteccion).toLocaleString("es-CL", {
+      const fechaStr = window.Components.formatDate(i.fechaDeteccion, {
         day: "2-digit",
         month: "short",
         hour: "2-digit",
@@ -1608,8 +1618,8 @@ async function cargarMantenimientosBitacora() {
     }
 
     tbody.innerHTML = list.map((m) => {
-      const fechaStr = new Date(m.fechaMantenimiento).toLocaleDateString("es-CL");
-      const proxCalibStr = m.proximaCalibracion ? new Date(m.proximaCalibracion).toLocaleDateString("es-CL") : "--";
+      const fechaStr = window.Components.formatDate(m.fechaMantenimiento, { day: "2-digit", month: "2-digit", year: "numeric" });
+      const proxCalibStr = m.proximaCalibracion ? window.Components.formatDate(m.proximaCalibracion, { day: "2-digit", month: "2-digit", year: "numeric" }) : "--";
 
       let badgeTipo = `<span class="badge badge-muted">${escapeHtml(m.tipo)}</span>`;
       if (m.tipo === "CALIBRACION") badgeTipo = `<span class="badge badge-blue">🔬 CALIBRACIÓN</span>`;
@@ -1656,10 +1666,10 @@ async function consultarFichaMedidor() {
     const ficha = await window.api.mantenimiento.getFichaMedidor(medidorId);
 
     const ultimaCalibStr = ficha.fechaUltimaCalibracion
-      ? new Date(ficha.fechaUltimaCalibracion).toLocaleDateString("es-CL")
+      ? window.Components.formatDate(ficha.fechaUltimaCalibracion, { day: "2-digit", month: "2-digit", year: "numeric" })
       : "No registra";
     const proxCalibStr = ficha.fechaProximaCalibracion
-      ? new Date(ficha.fechaProximaCalibracion).toLocaleDateString("es-CL")
+      ? window.Components.formatDate(ficha.fechaProximaCalibracion, { day: "2-digit", month: "2-digit", year: "numeric" })
       : "No programada";
 
     contenedor.innerHTML = `
@@ -1712,7 +1722,7 @@ async function consultarFichaMedidor() {
           <tbody>
             ${ficha.historial.length === 0 ? `<tr><td colspan="6" class="empty-state">No registra intervenciones en bitácora.</td></tr>` : ficha.historial.map((h) => `
               <tr>
-                <td data-label="Fecha">${new Date(h.fechaMantenimiento).toLocaleDateString("es-CL")}</td>
+                <td data-label="Fecha">${window.Components.formatDate(h.fechaMantenimiento, { day: "2-digit", month: "2-digit", year: "numeric" })}</td>
                 <td data-label="Tipo"><span class="badge badge-muted">${escapeHtml(h.tipo)}</span></td>
                 <td data-label="Técnico">${escapeHtml(h.tecnicoResponsable)}</td>
                 <td data-label="Precinto Ant." class="font-mono">${escapeHtml(h.numeroPrecintoAnterior || "--")}</td>
@@ -1811,7 +1821,7 @@ async function cargarEventosAuditoria() {
 
     tbody.innerHTML = eventos
       .map((e) => {
-        const fecha = new Date(e.createdAt).toLocaleString("es-CL", { timeZone: "UTC" });
+        const fecha = window.Components.formatDate(e.createdAt, { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
         const badge = accionBadges[e.accion] || `<span class="badge badge-muted">${escapeHtml(e.accion)}</span>`;
         let detallesHtml = "-";
         if (e.detalles) {
@@ -2018,7 +2028,7 @@ async function verEntregasWebhook(id) {
 
     tbody.innerHTML = entregas
       .map((e) => {
-        const fecha = new Date(e.createdAt).toLocaleString("es-CL");
+        const fecha = window.Components.formatDate(e.createdAt, { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
         const statusBadge = e.exitoso
           ? '<span class="badge badge-success">OK</span>'
           : '<span class="badge badge-danger">FALLO</span>';
@@ -2265,7 +2275,7 @@ async function cargarHistorialNotificaciones() {
           ? `<span class="badge badge-green">EXITOSO (${item.statusCode || 200})</span>`
           : `<span class="badge badge-red" title="${item.error || ''}">FALLIDO (${item.statusCode || 'ERR'})</span>`;
 
-        const fechaFormateada = new Date(item.createdAt).toLocaleString("es-CL");
+        const fechaFormateada = window.Components.formatDate(item.createdAt, { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
 
         return `
           <tr>

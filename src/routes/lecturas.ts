@@ -8,7 +8,9 @@ const LecturaInputSchema = z.object({
   medidorId: z.string().min(1),
   valor: z.number().nonnegative(),
   fechaLectura: z.string().optional(),
+  timestamp: z.string().optional(),
   notas: z.string().optional(),
+  observaciones: z.string().optional(),
 });
 
 // Listar lecturas recientes
@@ -24,12 +26,37 @@ lecturasRouter.get("/api/lecturas", async (c) => {
     JOIN tipos_medidor t ON m.tipoMedidorId = t.id
   `;
   if (medidorId) {
-    sql += ` WHERE l.medidorId = '${medidorId}'`;
+    sql += ` WHERE l.medidorId = '${medidorId.replace(/'/g, "''")}'`;
   }
   sql += " ORDER BY l.fechaLectura DESC LIMIT 50";
 
-  const { results } = await c.env.DB.prepare(sql).all();
-  return c.json(results);
+  const { results } = await c.env.DB.prepare(sql).all<{
+    id: string;
+    valor: number;
+    fechaLectura: string;
+    notas: string | null;
+    createdAt: string;
+    medidorId: string;
+    medidorCodigo: string;
+    recurso: string;
+    unidad: string;
+  }>();
+
+  const formatted = results.map((r) => {
+    let raw = r.fechaLectura ? r.fechaLectura.trim() : "";
+    let iso = raw;
+    if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/.test(raw)) {
+      iso = raw.replace(" ", "T") + (raw.includes("Z") ? "" : "Z");
+    }
+    return {
+      ...r,
+      fechaLectura: iso,
+      timestamp: iso,
+      fecha: iso,
+    };
+  });
+
+  return c.json(formatted);
 });
 
 // Registrar nueva lectura (con verificación de regla inmutable no-decreciente si es acumulativo)
@@ -40,8 +67,20 @@ lecturasRouter.post("/api/lecturas", async (c) => {
     return c.json({ error: "VALIDATION_ERROR", message: "Datos de lectura inválidos" }, 400);
   }
 
-  const { medidorId, valor, notas } = parsed.data;
-  const fecha = parsed.data.fechaLectura ? new Date(parsed.data.fechaLectura).toISOString() : new Date().toISOString();
+  const { medidorId, valor } = parsed.data;
+  const rawDate = parsed.data.fechaLectura || parsed.data.timestamp;
+  let fecha = new Date().toISOString();
+  if (rawDate) {
+    let cleaned = String(rawDate).trim();
+    if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/.test(cleaned)) {
+      cleaned = cleaned.replace(" ", "T") + (cleaned.includes("Z") ? "" : "Z");
+    }
+    const d = new Date(cleaned);
+    if (!isNaN(d.getTime())) {
+      fecha = d.toISOString();
+    }
+  }
+  const notas = parsed.data.notas || parsed.data.observaciones || null;
 
   // 1. Obtener tipo de medición del medidor
   const medidor = await c.env.DB.prepare(`
@@ -75,13 +114,13 @@ lecturasRouter.post("/api/lecturas", async (c) => {
 
   const lecturaId = crypto.randomUUID();
   const user = c.get("user");
-  const operadorId = user ? user.id : "usr-oper-01";
+  const operadorId = user ? user.id : (body.operadorId || "usr-oper-01");
 
   await c.env.DB.prepare(`
     INSERT INTO lecturas (id, medidorId, operadorId, valor, fechaLectura, notas, createdAt)
     VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
   `)
-    .bind(lecturaId, medidorId, operadorId, valor, fecha, notas || null)
+    .bind(lecturaId, medidorId, operadorId, valor, fecha, notas)
     .run();
 
   return c.json({
@@ -89,6 +128,8 @@ lecturasRouter.post("/api/lecturas", async (c) => {
     medidorId,
     valor,
     fechaLectura: fecha,
+    timestamp: fecha,
+    fecha,
     notas,
   }, 201);
 });
@@ -102,7 +143,9 @@ lecturasRouter.post("/api/lecturas/batch-sync", async (c) => {
       operadorId?: string;
       valor: number;
       fechaLectura?: string;
+      timestamp?: string;
       notas?: string;
+      observaciones?: string;
     }>;
     items?: Array<any>;
   };
@@ -140,13 +183,25 @@ lecturasRouter.post("/api/lecturas/batch-sync", async (c) => {
       }
 
       const id = crypto.randomUUID();
-      const fecha = item.fechaLectura ? new Date(item.fechaLectura).toISOString() : new Date().toISOString();
+      const rawDate = item.fechaLectura || item.timestamp;
+      let fecha = new Date().toISOString();
+      if (rawDate) {
+        let cleaned = String(rawDate).trim();
+        if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/.test(cleaned)) {
+          cleaned = cleaned.replace(" ", "T") + (cleaned.includes("Z") ? "" : "Z");
+        }
+        const d = new Date(cleaned);
+        if (!isNaN(d.getTime())) {
+          fecha = d.toISOString();
+        }
+      }
       const operadorId = item.operadorId || "usr-oper-01";
+      const notas = item.notas || item.observaciones || null;
 
       await c.env.DB.prepare(`
         INSERT INTO lecturas (id, medidorId, operadorId, valor, fechaLectura, notas, createdAt)
         VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-      `).bind(id, item.medidorId, operadorId, item.valor, fecha, item.notas || null).run();
+      `).bind(id, item.medidorId, operadorId, item.valor, fecha, notas).run();
 
       const lecturaCreada = {
         id,
@@ -154,7 +209,9 @@ lecturasRouter.post("/api/lecturas/batch-sync", async (c) => {
         operadorId,
         valor: item.valor,
         fechaLectura: fecha,
-        notas: item.notas,
+        timestamp: fecha,
+        fecha,
+        notas,
       };
 
       results.push({

@@ -93,7 +93,11 @@ dashboardRouter.get("/api/dashboard/desatendidos", async (c) => {
         horasSinLectura: null,
       });
     } else {
-      const diffMs = now - new Date(m.ultimaLecturaFecha).getTime();
+      let raw = m.ultimaLecturaFecha.trim();
+      if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/.test(raw)) {
+        raw = raw.replace(" ", "T") + (raw.includes("Z") ? "" : "Z");
+      }
+      const diffMs = now - new Date(raw).getTime();
       if (diffMs >= umbralMs) {
         desatendidos.push({
           medidorId: m.medidorId,
@@ -186,12 +190,19 @@ dashboardRouter.get("/api/dashboard/actividad-reciente", async (c) => {
     unidad: string;
   }>();
 
-  const formatted = results.map((r) => ({
-    id: r.id,
-    valor: r.valor,
-    timestamp: r.fechaLectura,
-    fechaLectura: r.fechaLectura,
-    notas: r.notas,
+  const formatted = results.map((r) => {
+    let raw = r.fechaLectura ? r.fechaLectura.trim() : "";
+    let iso = raw;
+    if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/.test(raw)) {
+      iso = raw.replace(" ", "T") + (raw.includes("Z") ? "" : "Z");
+    }
+    return {
+      id: r.id,
+      valor: r.valor,
+      timestamp: iso,
+      fechaLectura: iso,
+      fecha: iso,
+      notas: r.notas,
     medidor: {
       id: r.medidorId,
       codigo: r.medidorCodigo,
@@ -208,7 +219,8 @@ dashboardRouter.get("/api/dashboard/actividad-reciente", async (c) => {
         unidad: r.unidad,
       },
     },
-  }));
+  };
+});
 
   return c.json(formatted);
 });
