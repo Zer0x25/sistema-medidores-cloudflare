@@ -180,8 +180,23 @@ alertasRouter.post("/api/alertas/evaluar", async (c) => {
     "SELECT medidorId, tipo FROM incidentes_alerta WHERE estado != 'RESUELTO'"
   ).all<{ medidorId: string; tipo: string }>();
 
+  interface IncidenteAlertaNuevo {
+    id: string;
+    reglaId: string;
+    medidorId: string;
+    medidorCodigo: string;
+    instalacionId: string;
+    instalacionNombre: string;
+    tipo: string;
+    severidad: string;
+    mensaje: string;
+    estado: string;
+    valorDetectado: number;
+    fechaDeteccion: string;
+  }
+
   const abiertosSet = new Set(incidentesAbiertos.map(i => `${i.medidorId}:${i.tipo}`));
-  const nuevos: any[] = [];
+  const nuevos: IncidenteAlertaNuevo[] = [];
 
   for (const medidor of medidores) {
     const { results: lecturas } = await c.env.DB.prepare(

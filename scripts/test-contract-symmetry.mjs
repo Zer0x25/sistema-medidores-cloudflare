@@ -4,7 +4,8 @@
 // plantilla o componente renderice 'undefined', 'null', 'NaN' o 'Invalid Date'.
 // ==============================================================================
 
-const BASE_URL = process.env.API_BASE_URL || "https://metric.zer0x.org";
+const isRemote = process.argv.includes("--remote");
+const BASE_URL = process.env.API_BASE_URL || (isRemote ? "https://metric.zer0x.org" : "http://127.0.0.1:8787");
 const FORBIDDEN_STRINGS = ["undefined", "null", "NaN", "Invalid Date", "[object Object]"];
 
 function assertNoLeak(text, context) {
@@ -19,7 +20,28 @@ function assertNoLeak(text, context) {
 }
 
 async function run() {
-  console.log(`\n🧪 INICIANDO TEST DE SIMETRÍA DE CONTRATO contra ${BASE_URL}...\n`);
+  console.log(`\n🧪 INICIANDO TEST DE SIMETRÍA DE CONTRATO contra ${BASE_URL}...`);
+  if (!isRemote && !process.env.API_BASE_URL) {
+    console.log(`   (Modo LOCAL por defecto. Usa '--remote' o API_BASE_URL para apuntar a producción)\n`);
+  }
+
+  // 0. Verificación preliminar de conectividad (Health Check)
+  try {
+    const pingRes = await fetch(`${BASE_URL}/healthz`, { signal: AbortSignal.timeout(3000) });
+    if (!pingRes.ok) {
+      console.warn(`⚠️ Advertencia: /healthz respondió HTTP ${pingRes.status}`);
+    }
+  } catch (pingErr) {
+    if (!isRemote) {
+      console.error(`\n❌ Error de Conexión: No se pudo contactar ${BASE_URL}`);
+      console.error(`   Asegúrate de tener corriendo el servidor local en otra terminal:`);
+      console.error(`   👉 npm run dev\n`);
+      console.error(`   O para probar contra la nube en producción:`);
+      console.error(`   👉 npm run test:contract:remote\n`);
+      process.exit(1);
+    }
+    throw pingErr;
+  }
 
   // 1. Autenticación como Admin
   console.log("1️⃣ Autenticando usuario ADMIN...");

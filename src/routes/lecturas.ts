@@ -43,7 +43,7 @@ lecturasRouter.get("/api/lecturas", async (c) => {
   }>();
 
   const formatted = results.map((r) => {
-    let raw = r.fechaLectura ? r.fechaLectura.trim() : "";
+    const raw = r.fechaLectura ? r.fechaLectura.trim() : "";
     let iso = raw;
     if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/.test(raw)) {
       iso = raw.replace(" ", "T") + (raw.includes("Z") ? "" : "Z");
@@ -135,19 +135,21 @@ lecturasRouter.post("/api/lecturas", async (c) => {
 });
 
 // Sincronización en lote offline (SyncManager PWA)
+interface LecturaBatchItem {
+  localId?: string;
+  medidorId: string;
+  operadorId?: string;
+  valor: number;
+  fechaLectura?: string;
+  timestamp?: string;
+  notas?: string;
+  observaciones?: string;
+}
+
 lecturasRouter.post("/api/lecturas/batch-sync", async (c) => {
-  const body = await c.req.json() as {
-    lecturas?: Array<{
-      localId?: string;
-      medidorId: string;
-      operadorId?: string;
-      valor: number;
-      fechaLectura?: string;
-      timestamp?: string;
-      notas?: string;
-      observaciones?: string;
-    }>;
-    items?: Array<any>;
+  const body = (await c.req.json()) as {
+    lecturas?: LecturaBatchItem[];
+    items?: LecturaBatchItem[];
   };
 
   const list = body.lecturas || body.items;
@@ -155,7 +157,7 @@ lecturasRouter.post("/api/lecturas/batch-sync", async (c) => {
     return c.json({ error: "BAD_REQUEST", message: "Formato de lote inválido: debe contener un arreglo de 'lecturas'" }, 400);
   }
 
-  const results: Array<{ localId?: string; status: "SYNCED" | "REJECTED"; lectura?: any; error?: { code?: string; message: string } }> = [];
+  const results: Array<{ localId?: string; status: "SYNCED" | "REJECTED"; lectura?: Record<string, unknown>; error?: { code?: string; message: string } }> = [];
   let syncedCount = 0;
   let rejectedCount = 0;
 

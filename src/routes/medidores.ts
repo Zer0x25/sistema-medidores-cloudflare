@@ -1,7 +1,9 @@
-import { Hono } from "hono";
+import { Hono, type Context } from "hono";
 import { z } from "zod";
 import type { Env, Variables } from "../types.js";
 import { registrarAuditoria } from "../audit.js";
+
+type AppContext = Context<{ Bindings: Env; Variables: Variables }>;
 
 export const medidoresRouter = new Hono<{ Bindings: Env; Variables: Variables }>();
 
@@ -86,7 +88,7 @@ medidoresRouter.get("/api/medidores", async (c) => {
   }>();
 
   const formatted = results.map((row) => {
-    let rawFecha = row.ultimaLecturaFecha ? row.ultimaLecturaFecha.trim() : null;
+    const rawFecha = row.ultimaLecturaFecha ? row.ultimaLecturaFecha.trim() : null;
     let isoFecha = rawFecha;
     if (rawFecha && /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/.test(rawFecha)) {
       isoFecha = rawFecha.replace(" ", "T") + (rawFecha.includes("Z") ? "" : "Z");
@@ -176,7 +178,7 @@ const CrearTipoMedidorSchema = z.object({
 });
 
 // 3. Tipos de medidores
-const fetchTipos = async (c: any) => {
+const fetchTipos = async (c: AppContext) => {
   const { results } = await c.env.DB.prepare(
     "SELECT id, nombre, recurso, unidad, tipoMedicion, activo FROM tipos_medidor WHERE activo = 1 ORDER BY nombre ASC"
   ).all<{ id: string; nombre: string; recurso: string; unidad: string; tipoMedicion: string; activo: number }>();
@@ -191,7 +193,7 @@ const fetchTipos = async (c: any) => {
 medidoresRouter.get("/api/tipos-medidor", fetchTipos);
 medidoresRouter.get("/api/medidores/tipos", fetchTipos);
 
-const handleCrearTipo = async (c: any) => {
+const handleCrearTipo = async (c: AppContext) => {
   const user = c.get("user");
   if (!user || (user.rol !== "ADMIN" && user.rol !== "SUPERVISOR")) {
     return c.json({ error: "FORBIDDEN", message: "Permisos insuficientes" }, 403);
@@ -261,7 +263,7 @@ medidoresRouter.get("/api/medidores/:id", async (c) => {
     .all<{ id: string; valor: number; fechaLectura: string; notas: string | null }>();
 
   const mappedLecturas = lecturas.map((l) => {
-    let raw = l.fechaLectura ? l.fechaLectura.trim() : "";
+    const raw = l.fechaLectura ? l.fechaLectura.trim() : "";
     let iso = raw;
     if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/.test(raw)) {
       iso = raw.replace(" ", "T") + (raw.includes("Z") ? "" : "Z");

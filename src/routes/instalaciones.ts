@@ -64,7 +64,7 @@ instalacionesRouter.post("/api/instalaciones", async (c) => {
     });
 
     return c.json({ id, nombre, ubicacion, direccion: ubicacion, activa: true }, 201);
-  } catch (err) {
+  } catch {
     return c.json({ error: "INSTALACION_DUPLICADA", message: "Ya existe una instalación con ese nombre" }, 409);
   }
 });

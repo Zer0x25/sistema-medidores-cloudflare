@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { z } from "zod";
 import type { Env, Variables } from "../types.js";
-import { verifyPassword, signJwt, hashPassword } from "../auth.js";
+import { verifyPassword, signJwt } from "../auth.js";
 
 export const authRouter = new Hono<{ Bindings: Env; Variables: Variables }>();
 

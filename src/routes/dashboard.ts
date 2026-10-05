@@ -191,7 +191,7 @@ dashboardRouter.get("/api/dashboard/actividad-reciente", async (c) => {
   }>();
 
   const formatted = results.map((r) => {
-    let raw = r.fechaLectura ? r.fechaLectura.trim() : "";
+    const raw = r.fechaLectura ? r.fechaLectura.trim() : "";
     let iso = raw;
     if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/.test(raw)) {
       iso = raw.replace(" ", "T") + (raw.includes("Z") ? "" : "Z");
