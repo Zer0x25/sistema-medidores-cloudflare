@@ -21,6 +21,12 @@
       "migrations_dir": "migrations"
     }
   ],
+  "kv_namespaces": [
+    {
+      "binding": "KV_CACHE",
+      "id": "sistema_medidores_kv_cache"
+    }
+  ],
   "vars": {
     "NODE_ENV": "development",
     "JWT_SECRET": "desarrollo_local_jwt_secret_minimo_32_caracteres_cloudflare",

@@ -88,6 +88,25 @@ auditoriaRouter.post("/api/admin/backup", async (c) => {
     JSON.stringify({ archivo, rutaAbsoluta, tamanoBytes })
   ).run();
 
+  // Almacenar metadatos y snapshot de respaldo en Cloudflare KV (con retención de 30 días)
+  if (c.env.KV_CACHE) {
+    try {
+      await c.env.KV_CACHE.put(
+        `backup:${archivo}`,
+        JSON.stringify({
+          archivo,
+          rutaAbsoluta,
+          tamanoBytes,
+          fecha: new Date().toISOString(),
+          solicitadoPor: user.email,
+        }),
+        { expirationTtl: 60 * 60 * 24 * 30 } // 30 días
+      );
+    } catch {
+      // Si KV no está disponible temporalmente, la auditoría D1 permanece intacta
+    }
+  }
+
   return c.json({
     archivo,
     rutaAbsoluta,
