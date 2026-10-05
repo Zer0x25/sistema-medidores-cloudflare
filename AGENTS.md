@@ -150,3 +150,15 @@ npm run test:contract:remote # Test de simetría de contrato contra la nube (htt
 npm run db:migrate:remote   # Aplica migraciones pendientes a D1 en la nube
 npm run deploy             # Publica Worker, Assets y bindings a la red Anycast global
 ```
+
+---
+
+## 📚 8. Mapa Canónico de Decisiones de Arquitectura (ADRs Consolidados)
+
+Toda decisión arquitectónica de este proyecto se encuentra consolidada en 5 registros maestros inmutables:
+- **[ADR 0000](file:///home/zer0x/proyectos/Mi-app-test-SSD-ADR/deploy-cloudflare/docs/adr/0000-gobernanza-agentica-y-quality-gates.md):** Gobernanza Agéntica, Spec-Driven Development (SDD) y Quality Gates.
+- **[ADR 0001](file:///home/zer0x/proyectos/Mi-app-test-SSD-ADR/deploy-cloudflare/docs/adr/0001-arquitectura-serverless-cloudflare-edge-y-presupuesto-d1.md):** Arquitectura Serverless Cloudflare Edge, Presupuesto D1 y Entornos con Wrangler.
+- **[ADR 0002](file:///home/zer0x/proyectos/Mi-app-test-SSD-ADR/deploy-cloudflare/docs/adr/0002-frontend-aurora-pwa-offline-first-y-adaptabilidad-movil.md):** Frontend Aurora Design System, PWA Offline-First y Adaptabilidad Móvil.
+- **[ADR 0003](file:///home/zer0x/proyectos/Mi-app-test-SSD-ADR/deploy-cloudflare/docs/adr/0003-seguridad-zero-trust-rbac-auditoria-e-integraciones.md):** Seguridad Zero-Trust, Criptografía Edge, RBAC, Auditoría e Integraciones Salientes.
+- **[ADR 0004](file:///home/zer0x/proyectos/Mi-app-test-SSD-ADR/deploy-cloudflare/docs/adr/0004-simetria-de-contratos-cero-leaks-y-testing-automatizado.md):** Simetría de Contratos, Mandato Cero Leaks y Testing Automatizado en Edge.
+

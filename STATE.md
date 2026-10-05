@@ -46,6 +46,17 @@ Este archivo actúa como memoria persistente y tablero de control para humanos y
 
 ---
 
+## 📜 Registro Canónico de Arquitectura (5 ADRs Maestros)
+
+El proyecto consolida todas las lecciones y patrones en 5 decisiones maestras inmutables en `docs/adr/`:
+- **[ADR 0000](file:///home/zer0x/proyectos/Mi-app-test-SSD-ADR/deploy-cloudflare/docs/adr/0000-gobernanza-agentica-y-quality-gates.md):** Gobernanza Agéntica, SDD y Quality Gates.
+- **[ADR 0001](file:///home/zer0x/proyectos/Mi-app-test-SSD-ADR/deploy-cloudflare/docs/adr/0001-arquitectura-serverless-cloudflare-edge-y-presupuesto-d1.md):** Arquitectura Serverless Cloudflare Edge, Presupuesto D1 y Entornos con Wrangler.
+- **[ADR 0002](file:///home/zer0x/proyectos/Mi-app-test-SSD-ADR/deploy-cloudflare/docs/adr/0002-frontend-aurora-pwa-offline-first-y-adaptabilidad-movil.md):** Frontend Aurora Design System, PWA Offline-First y Adaptabilidad Móvil.
+- **[ADR 0003](file:///home/zer0x/proyectos/Mi-app-test-SSD-ADR/deploy-cloudflare/docs/adr/0003-seguridad-zero-trust-rbac-auditoria-e-integraciones.md):** Seguridad Zero-Trust, Criptografía Edge, RBAC, Auditoría e Integraciones Salientes.
+- **[ADR 0004](file:///home/zer0x/proyectos/Mi-app-test-SSD-ADR/deploy-cloudflare/docs/adr/0004-simetria-de-contratos-cero-leaks-y-testing-automatizado.md):** Simetría de Contratos, Mandato Cero Leaks y Testing Automatizado en Edge.
+
+---
+
 ## 🚀 Portabilidad a Otra Máquina
 
 Para llevar este proyecto a otro PC:
@@ -59,3 +70,4 @@ Para llevar este proyecto a otro PC:
    npm run dev
    ```
 4. El proyecto estará completamente funcional en `http://localhost:8787`.
+
