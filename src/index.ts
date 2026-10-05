@@ -40,7 +40,7 @@ app.use("*", cors({
 // 4. Hook de Autenticación y extracción de JWT
 app.use("/api/*", async (c, next) => {
   // Rutas públicas exentas de autenticación
-  const publicRoutes = ["/api/auth/login", "/api/auth/register", "/api/health", "/api/demo/seed"];
+  const publicRoutes = ["/api/auth/login", "/api/auth/register", "/api/health", "/api/config", "/api/demo/seed"];
   if (publicRoutes.some(route => c.req.path.startsWith(route))) {
     return next();
   }

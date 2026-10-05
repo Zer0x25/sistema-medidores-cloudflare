@@ -51,3 +51,15 @@ healthRouter.get("/api/health", async (c) => {
     responseTimeMs: `${durationMs}ms`,
   });
 });
+
+// Configuración pública de entorno y feature flags (ADR 0012)
+healthRouter.get("/api/config", (c) => {
+  const env = c.env.NODE_ENV || "development";
+  return c.json({
+    env,
+    features: {
+      devRoleSwitcher: env !== "production",
+    },
+  });
+});
+
