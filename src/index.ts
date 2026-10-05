@@ -15,6 +15,7 @@ import { auditoriaRouter } from "./routes/auditoria.js";
 import { reportesRouter } from "./routes/reportes.js";
 import { webhooksRouter } from "./routes/webhooks.js";
 import { notificacionesRouter } from "./routes/notificaciones.js";
+import { demoRouter } from "./routes/demo.js";
 
 const app = new Hono<{ Bindings: Env; Variables: Variables }>();
 
@@ -39,7 +40,7 @@ app.use("*", cors({
 // 4. Hook de Autenticación y extracción de JWT
 app.use("/api/*", async (c, next) => {
   // Rutas públicas exentas de autenticación
-  const publicRoutes = ["/api/auth/login", "/api/auth/register", "/api/health"];
+  const publicRoutes = ["/api/auth/login", "/api/auth/register", "/api/health", "/api/demo/seed"];
   if (publicRoutes.some(route => c.req.path.startsWith(route))) {
     return next();
   }
@@ -82,6 +83,7 @@ app.route("/", auditoriaRouter);
 app.route("/", reportesRouter);
 app.route("/", webhooksRouter);
 app.route("/", notificacionesRouter);
+app.route("/", demoRouter);
 
 // 7. Despacho de Archivos Estáticos (Frontend SPA en ./public vía Workers Assets)
 app.get("*", async (c) => {

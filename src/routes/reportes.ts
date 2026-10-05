@@ -148,3 +148,135 @@ reportesRouter.post("/api/reportes/conciliar/:id", async (c) => {
     estadoConciliacion: estado,
   });
 });
+
+// Consumos detallados por medidor
+reportesRouter.get("/api/reportes/consumos", async (c) => {
+  const instalacionId = c.req.query("instalacionId");
+  const medidorId = c.req.query("medidorId");
+  const recurso = c.req.query("recurso");
+  const fechaInicio = c.req.query("fechaInicio");
+  const fechaFin = c.req.query("fechaFin");
+
+  const conditions: string[] = [];
+  const params: unknown[] = [];
+
+  if (instalacionId) {
+    conditions.push("m.instalacionId = ?");
+    params.push(instalacionId);
+  }
+  if (medidorId) {
+    conditions.push("m.id = ?");
+    params.push(medidorId);
+  }
+  if (recurso) {
+    conditions.push("t.recurso = ?");
+    params.push(recurso);
+  }
+  if (fechaInicio) {
+    conditions.push("l.fechaLectura >= ?");
+    params.push(fechaInicio);
+  }
+  if (fechaFin) {
+    conditions.push("l.fechaLectura <= ?");
+    params.push(fechaFin);
+  }
+
+  const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+
+  const { results } = await c.env.DB.prepare(`
+    SELECT 
+      i.nombre as instalacionNombre,
+      m.id as medidorId,
+      m.codigo as medidorCodigo,
+      t.recurso,
+      t.unidad,
+      COALESCE(MIN(l.valor), 0) as lecturaInicial,
+      COALESCE(MAX(l.valor), 0) as lecturaFinal,
+      COALESCE(MAX(l.valor) - MIN(l.valor), 0) as consumoNeto,
+      COUNT(l.id) as totalLecturas
+    FROM medidores m
+    JOIN instalaciones i ON m.instalacionId = i.id
+    JOIN tipos_medidor t ON m.tipoMedidorId = t.id
+    LEFT JOIN lecturas l ON l.medidorId = m.id
+    ${whereClause}
+    GROUP BY m.id
+    ORDER BY i.nombre, m.codigo
+  `).bind(...params).all();
+
+  return c.json(results);
+});
+
+// Exportar reporte de consumos a CSV
+reportesRouter.get("/api/reportes/consumos/exportar-csv", async (c) => {
+  const instalacionId = c.req.query("instalacionId");
+  const medidorId = c.req.query("medidorId");
+  const recurso = c.req.query("recurso");
+  const fechaInicio = c.req.query("fechaInicio");
+  const fechaFin = c.req.query("fechaFin");
+
+  const conditions: string[] = [];
+  const params: unknown[] = [];
+
+  if (instalacionId) {
+    conditions.push("m.instalacionId = ?");
+    params.push(instalacionId);
+  }
+  if (medidorId) {
+    conditions.push("m.id = ?");
+    params.push(medidorId);
+  }
+  if (recurso) {
+    conditions.push("t.recurso = ?");
+    params.push(recurso);
+  }
+  if (fechaInicio) {
+    conditions.push("l.fechaLectura >= ?");
+    params.push(fechaInicio);
+  }
+  if (fechaFin) {
+    conditions.push("l.fechaLectura <= ?");
+    params.push(fechaFin);
+  }
+
+  const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+
+  const { results } = await c.env.DB.prepare(`
+    SELECT 
+      i.nombre as instalacionNombre,
+      m.codigo as medidorCodigo,
+      t.recurso,
+      t.unidad,
+      COALESCE(MIN(l.valor), 0) as lecturaInicial,
+      COALESCE(MAX(l.valor), 0) as lecturaFinal,
+      COALESCE(MAX(l.valor) - MIN(l.valor), 0) as consumoNeto,
+      COUNT(l.id) as totalLecturas
+    FROM medidores m
+    JOIN instalaciones i ON m.instalacionId = i.id
+    JOIN tipos_medidor t ON m.tipoMedidorId = t.id
+    LEFT JOIN lecturas l ON l.medidorId = m.id
+    ${whereClause}
+    GROUP BY m.id
+    ORDER BY i.nombre, m.codigo
+  `).bind(...params).all<{
+    instalacionNombre: string;
+    medidorCodigo: string;
+    recurso: string;
+    unidad: string;
+    lecturaInicial: number;
+    lecturaFinal: number;
+    consumoNeto: number;
+    totalLecturas: number;
+  }>();
+
+  let csv = "Instalacion,Medidor,Recurso,Unidad,Lectura Inicial,Lectura Final,Consumo Neto,Total Lecturas\r\n";
+  for (const r of results) {
+    csv += `"${r.instalacionNombre}","${r.medidorCodigo}","${r.recurso}","${r.unidad}",${r.lecturaInicial},${r.lecturaFinal},${r.consumoNeto},${r.totalLecturas}\r\n`;
+  }
+
+  return new Response(csv, {
+    headers: {
+      "Content-Type": "text/csv; charset=utf-8",
+      "Content-Disposition": 'attachment; filename="reporte_consumos.csv"',
+    },
+  });
+});
