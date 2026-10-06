@@ -8,10 +8,10 @@ Este archivo actúa como memoria persistente y tablero de control para humanos y
 
 - **Proyecto:** `sistema-medidores-cloudflare` (Cloudflare Workers + Hono + D1 + KV + Static Assets)
 - **Estado:** 100% autónomo, portable, probado y certificado tanto en entorno local (`wrangler dev`) como en producción (`https://metric.zer0x.org`).
-- **Dominio Edge:** `metric.zer0x.org`
+- **Dominio Edge:** `metric.zer0x.org` (Version ID: `5b64026d-1e00-404a-b798-3c06ebe5b685`)
 - **Última verificación de Quality Gate (`./scripts/verify.sh`):** Código de salida 0 (Typecheck 0 errores, ESLint 0 advertencias, Vitest 33/33 tests pasando en 0.6s).
 - **Herramienta CLI:** Actualizado a **Wrangler v4 (`^4.147.0`)** y `@cloudflare/workers-types` (`^5.20261006.1`) con soporte para tipos de runtime generados.
-- **Test de Simetría de Contrato (`npm run test:contract:remote`):** 100% pasando sin fugas (`undefined`, `null`, `NaN`, `Invalid Date`, `[object Object]`).
+- **Test de Simetría de Contrato (`npm run test:contract:remote`):** 100% pasando sin fugas (`undefined`, `null`, `NaN`, `Invalid Date`, `[object Object]`) verificado en producción tras despliegue con Wrangler v4.
 
 ---
 
