@@ -24,6 +24,7 @@ Opera bajo la metodología **Spec-Driven Development (SDD)**, **Architecture Dec
    - El runtime es **Cloudflare Workers (V8 Isolates)** con compatibilidad `nodejs_compat`.
    - Prohibido instalar librerías que requieran binarios nativos compilados de Node.js (como node-gyp, native addons, sockets TCP bloqueantes o filesystem síncrono `fs.*Sync`).
    - Todas las dependencias deben ser puras en TypeScript/JavaScript o compatibles con Web Standards (`fetch`, `crypto`, `Streams`, `Request`, `Response`).
+   - **Compatibilidad de Tipos Node.js en Edge:** Al emplear módulos `node:*` bajo `nodejs_compat` con los runtime types de Wrangler v4, se debe importar `Buffer` explícitamente desde `node:buffer` y normalizar buffers con `Buffer.from(...)` antes de invocar métodos de serialización como `.toString('hex')` o `.toString('base64')`, previniendo colisiones de tipo con la firma Web estándar de `Uint8Array`.
 
 ---
 

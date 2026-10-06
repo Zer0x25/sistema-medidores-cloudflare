@@ -1,13 +1,14 @@
 import crypto from "node:crypto";
+import { Buffer } from "node:buffer";
 import { promisify } from "node:util";
 import type { AuthUser } from "./types.js";
 
 const scryptAsync = promisify(crypto.scrypt);
 
 export async function hashPassword(password: string): Promise<string> {
-  const salt = crypto.randomBytes(16).toString("hex");
+  const salt = Buffer.from(crypto.randomBytes(16)).toString("hex");
   const derivedKey = (await scryptAsync(password, salt, 64)) as Buffer;
-  return `${salt}:${derivedKey.toString("hex")}`;
+  return `${salt}:${Buffer.from(derivedKey).toString("hex")}`;
 }
 
 export async function verifyPassword(password: string, storedHash: string): Promise<boolean> {
