@@ -1,14 +1,80 @@
 // ==============================================================================
 // MEDIDORES API CLIENT - CAPA DE TRANSPORTE CENTRALIZADA
 // ADR 0002: Arquitectura del Frontend, Design System y Desacoplamiento de Lógica
+// ADR 0015: Observabilidad, Diagnósticos Estructurados y Telemetría Agéntica
 // ==============================================================================
+
+// ------------------------------------------------------------------------------
+// OBSERVABILIDAD GLOBAL PARA AGENTES DE NAVEGADOR (ADR 0015)
+// ------------------------------------------------------------------------------
+if (typeof window !== "undefined" && !window.__DIAGNOSTICS__) {
+  const MAX_ERRORS = 20;
+  window.__DIAGNOSTICS__ = {
+    activeRoute: (typeof window.location !== "undefined" && window.location.hash) ? window.location.hash : "#/",
+    currentUser: null,
+    apiErrors: [],
+    lastApiError: null,
+    uncaughtErrors: [],
+    recordApiError(err) {
+      this.lastApiError = err;
+      this.apiErrors.unshift(err);
+      if (this.apiErrors.length > MAX_ERRORS) {
+        this.apiErrors.pop();
+      }
+    },
+    recordUncaughtError(err) {
+      this.uncaughtErrors.unshift(err);
+      if (this.uncaughtErrors.length > MAX_ERRORS) {
+        this.uncaughtErrors.pop();
+      }
+    },
+    clearErrors() {
+      this.apiErrors = [];
+      this.lastApiError = null;
+      this.uncaughtErrors = [];
+    },
+    getSummary() {
+      return {
+        activeRoute: this.activeRoute,
+        currentUser: this.currentUser ? { id: this.currentUser.id, rol: this.currentUser.rol, email: this.currentUser.email } : null,
+        totalApiErrors: this.apiErrors.length,
+        lastApiError: this.lastApiError,
+        totalUncaughtErrors: this.uncaughtErrors.length,
+      };
+    },
+  };
+
+  window.addEventListener("error", (event) => {
+    const errorInfo = {
+      type: "uncaught_error",
+      message: event.message,
+      filename: event.filename,
+      lineno: event.lineno,
+      colno: event.colno,
+      timestamp: new Date().toISOString(),
+    };
+    console.error(`[APP UNCAUGHT ERROR] ${errorInfo.message} at ${errorInfo.filename}:${errorInfo.lineno}`, errorInfo);
+    window.__DIAGNOSTICS__.recordUncaughtError(errorInfo);
+  });
+
+  window.addEventListener("unhandledrejection", (event) => {
+    const reason = event.reason;
+    const errorInfo = {
+      type: "unhandled_rejection",
+      message: reason instanceof Error ? reason.message : String(reason),
+      stack: reason instanceof Error ? reason.stack : undefined,
+      timestamp: new Date().toISOString(),
+    };
+    console.error(`[APP UNHANDLED REJECTION] ${errorInfo.message}`, errorInfo);
+    window.__DIAGNOSTICS__.recordUncaughtError(errorInfo);
+  });
+}
 
 class ApiError extends Error {
   constructor(status, message, code = "API_ERROR", details = null) {
     super(message);
     this.name = "ApiError";
     this.status = status;
-    this.statusCode = status;
     this.code = code;
     this.details = details;
   }
@@ -39,6 +105,7 @@ class ApiClient {
 
   async request(endpoint, options = {}) {
     const url = `${this.baseUrl}${endpoint}`;
+    const method = options.method || "GET";
     const headers = {
       ...(options.body ? { "Content-Type": "application/json" } : {}),
       ...(options.headers || {}),
@@ -80,6 +147,24 @@ class ApiClient {
 
         const errorMessage = (typeof data === "object" && data.message) ? data.message : `Error HTTP ${response.status}`;
         const errorCode = (typeof data === "object" && data.code) ? data.code : `HTTP_${response.status}`;
+
+        // Diagnóstico estructurado y trazable (ADR 0015)
+        const errorDetail = {
+          endpoint,
+          method,
+          status: response.status,
+          code: errorCode,
+          message: errorMessage,
+          details: data,
+          timestamp: new Date().toISOString(),
+        };
+
+        console.error(`[API FAIL] ${errorDetail.method} ${errorDetail.endpoint} -> HTTP ${errorDetail.status} (${errorDetail.code}): ${errorDetail.message}`, errorDetail);
+
+        if (window.__DIAGNOSTICS__) {
+          window.__DIAGNOSTICS__.recordApiError(errorDetail);
+        }
+
         throw new ApiError(response.status, errorMessage, errorCode, data);
       }
 
@@ -88,7 +173,20 @@ class ApiClient {
       if (err instanceof ApiError) {
         throw err;
       }
-      throw new ApiError(0, err.message || "Error de conexión con el servidor", "NETWORK_ERROR");
+      const networkErrorDetail = {
+        endpoint,
+        method,
+        status: 0,
+        code: "NETWORK_ERROR",
+        message: err.message || "Error de conexión con el servidor",
+        details: null,
+        timestamp: new Date().toISOString(),
+      };
+      console.error(`[API FAIL] ${networkErrorDetail.method} ${networkErrorDetail.endpoint} -> NETWORK ERROR: ${networkErrorDetail.message}`, networkErrorDetail);
+      if (window.__DIAGNOSTICS__) {
+        window.__DIAGNOSTICS__.recordApiError(networkErrorDetail);
+      }
+      throw new ApiError(0, networkErrorDetail.message, networkErrorDetail.code);
     }
   }
 
@@ -102,6 +200,9 @@ class ApiClient {
       if (res.token) {
         this.setToken(res.token);
       }
+      if (res.usuario && window.__DIAGNOSTICS__) {
+        window.__DIAGNOSTICS__.currentUser = res.usuario;
+      }
       return res;
     },
     register: (payload) =>
@@ -109,7 +210,13 @@ class ApiClient {
         method: "POST",
         body: JSON.stringify(payload),
       }),
-    me: () => this.request("/api/auth/me"),
+    me: async () => {
+      const user = await this.request("/api/auth/me");
+      if (user && window.__DIAGNOSTICS__) {
+        window.__DIAGNOSTICS__.currentUser = user;
+      }
+      return user;
+    },
     cambiarPassword: (payload) =>
       this.request("/api/auth/cambiar-password", {
         method: "POST",
@@ -117,6 +224,9 @@ class ApiClient {
       }),
     logout: () => {
       this.clearToken();
+      if (window.__DIAGNOSTICS__) {
+        window.__DIAGNOSTICS__.currentUser = null;
+      }
     },
   };
 

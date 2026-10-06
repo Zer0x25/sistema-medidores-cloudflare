@@ -49,7 +49,7 @@
 
       <!-- Conmutador de Roles & Módulos -->
       <nav class="role-switcher" id="roleSwitcher" aria-label="Selector de Módulo">
-        <button class="role-btn active" id="tabAdminBtn" onclick="switchRole('admin')">
+        <button class="role-btn active" id="tabAdminBtn" data-testid="nav-dashboard" onclick="switchRole('admin')">
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <rect x="3" y="3" width="7" height="7"/>
             <rect x="14" y="3" width="7" height="7"/>
@@ -58,7 +58,7 @@
           </svg>
           Dashboard
         </button>
-        <button class="role-btn" id="tabReportesBtn" onclick="switchRole('reportes')">
+        <button class="role-btn" id="tabReportesBtn" data-testid="nav-reportes" onclick="switchRole('reportes')">
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
             <polyline points="14 2 14 8 20 8"/>
@@ -67,7 +67,7 @@
           </svg>
           Reportes &amp; Facturas
         </button>
-        <button class="role-btn" id="tabAlertasBtn" onclick="switchRole('alertas')">
+        <button class="role-btn" id="tabAlertasBtn" data-testid="nav-alertas" onclick="switchRole('alertas')">
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
             <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
@@ -75,13 +75,13 @@
           Alertas
           <span id="navAlertasBadge" class="badge badge-amber" style="display:none; font-size: 0.7rem; padding: 0.1rem 0.4rem; margin-left: 0.25rem;">0</span>
         </button>
-        <button class="role-btn" id="tabMantenimientoBtn" onclick="switchRole('mantenimiento')">
+        <button class="role-btn" id="tabMantenimientoBtn" data-testid="nav-mantenimiento" onclick="switchRole('mantenimiento')">
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
           </svg>
           Mantenimiento
         </button>
-        <button class="role-btn" id="tabUsuariosBtn" onclick="switchRole('usuarios')">
+        <button class="role-btn" id="tabUsuariosBtn" data-testid="nav-usuarios" onclick="switchRole('usuarios')">
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
             <circle cx="9" cy="7" r="4"/>
@@ -90,13 +90,13 @@
           </svg>
           Usuarios
         </button>
-        <button class="role-btn" id="tabAuditoriaBtn" onclick="switchRole('auditoria')">
+        <button class="role-btn" id="tabAuditoriaBtn" data-testid="nav-auditoria" onclick="switchRole('auditoria')">
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
           </svg>
           Auditoría
         </button>
-        <button class="role-btn" id="tabWebhooksBtn" onclick="switchRole('webhooks')">
+        <button class="role-btn" id="tabWebhooksBtn" data-testid="nav-webhooks" onclick="switchRole('webhooks')">
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
             <polyline points="15 3 21 3 21 9"/>
@@ -104,14 +104,14 @@
           </svg>
           Webhooks
         </button>
-        <button class="role-btn" id="tabNotificacionesBtn" onclick="switchRole('notificaciones')">
+        <button class="role-btn" id="tabNotificacionesBtn" data-testid="nav-notificaciones" onclick="switchRole('notificaciones')">
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
             <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
           </svg>
           Notificaciones
         </button>
-        <button class="role-btn" id="tabOperadorBtn" onclick="switchRole('operador')">
+        <button class="role-btn" id="tabOperadorBtn" data-testid="nav-operador" onclick="switchRole('operador')">
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
             <circle cx="9" cy="7" r="4"/>
@@ -124,13 +124,13 @@
       <!-- Selector Rápido de Roles RBAC (ADR 0002 / Spec-005) -->
       <div class="role-simulator-bar" id="roleSimulatorBar" aria-label="Simular usuario por rol">
         <span class="simulator-label">Simular:</span>
-        <button class="btn btn-sm btn-outline active" id="quickRoleAdmin" onclick="loginComo('ADMIN')" title="Conectar como Administrador Global">
+        <button class="btn btn-sm btn-outline active" id="quickRoleAdmin" data-testid="quick-role-admin" onclick="loginComo('ADMIN')" title="Conectar como Administrador Global">
           👑 Admin
         </button>
-        <button class="btn btn-sm btn-outline" id="quickRoleSupervisor" onclick="loginComo('SUPERVISOR')" title="Conectar como Supervisor Planta Norte">
+        <button class="btn btn-sm btn-outline" id="quickRoleSupervisor" data-testid="quick-role-supervisor" onclick="loginComo('SUPERVISOR')" title="Conectar como Supervisor Planta Norte">
           🛡️ Supervisor
         </button>
-        <button class="btn btn-sm btn-outline" id="quickRoleOperador" onclick="loginComo('OPERADOR')" title="Conectar como Operador Terreno">
+        <button class="btn btn-sm btn-outline" id="quickRoleOperador" data-testid="quick-role-operador" onclick="loginComo('OPERADOR')" title="Conectar como Operador Terreno">
           👷 Operador
         </button>
       </div>
@@ -214,7 +214,7 @@
 
       <!-- Navegación por Módulos -->
       <nav class="mobile-nav-list" aria-label="Módulos del sistema">
-        <button class="mobile-nav-btn active" id="mobileTabAdminBtn" onclick="switchRole('admin'); window.closeMobileMenu();">
+        <button class="mobile-nav-btn active" id="mobileTabAdminBtn" data-testid="mobile-nav-dashboard" onclick="switchRole('admin'); window.closeMobileMenu();">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <rect x="3" y="3" width="7" height="7"/>
             <rect x="14" y="3" width="7" height="7"/>
@@ -223,7 +223,7 @@
           </svg>
           Dashboard
         </button>
-        <button class="mobile-nav-btn" id="mobileTabReportesBtn" onclick="switchRole('reportes'); window.closeMobileMenu();">
+        <button class="mobile-nav-btn" id="mobileTabReportesBtn" data-testid="mobile-nav-reportes" onclick="switchRole('reportes'); window.closeMobileMenu();">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
             <polyline points="14 2 14 8 20 8"/>
@@ -232,20 +232,20 @@
           </svg>
           Reportes &amp; Facturas
         </button>
-        <button class="mobile-nav-btn" id="mobileTabAlertasBtn" onclick="switchRole('alertas'); window.closeMobileMenu();">
+        <button class="mobile-nav-btn" id="mobileTabAlertasBtn" data-testid="mobile-nav-alertas" onclick="switchRole('alertas'); window.closeMobileMenu();">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
             <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
           </svg>
           Alertas
         </button>
-        <button class="mobile-nav-btn" id="mobileTabMantenimientoBtn" onclick="switchRole('mantenimiento'); window.closeMobileMenu();">
+        <button class="mobile-nav-btn" id="mobileTabMantenimientoBtn" data-testid="mobile-nav-mantenimiento" onclick="switchRole('mantenimiento'); window.closeMobileMenu();">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
           </svg>
           Mantenimiento
         </button>
-        <button class="mobile-nav-btn" id="mobileTabUsuariosBtn" onclick="switchRole('usuarios'); window.closeMobileMenu();">
+        <button class="mobile-nav-btn" id="mobileTabUsuariosBtn" data-testid="mobile-nav-usuarios" onclick="switchRole('usuarios'); window.closeMobileMenu();">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
             <circle cx="9" cy="7" r="4"/>
@@ -254,13 +254,13 @@
           </svg>
           Usuarios
         </button>
-        <button class="mobile-nav-btn" id="mobileTabAuditoriaBtn" onclick="switchRole('auditoria'); window.closeMobileMenu();">
+        <button class="mobile-nav-btn" id="mobileTabAuditoriaBtn" data-testid="mobile-nav-auditoria" onclick="switchRole('auditoria'); window.closeMobileMenu();">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
           </svg>
           Auditoría
         </button>
-        <button class="mobile-nav-btn" id="mobileTabWebhooksBtn" onclick="switchRole('webhooks'); window.closeMobileMenu();">
+        <button class="mobile-nav-btn" id="mobileTabWebhooksBtn" data-testid="mobile-nav-webhooks" onclick="switchRole('webhooks'); window.closeMobileMenu();">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
             <polyline points="15 3 21 3 21 9"/>
@@ -268,14 +268,14 @@
           </svg>
           Webhooks
         </button>
-        <button class="mobile-nav-btn" id="mobileTabNotificacionesBtn" onclick="switchRole('notificaciones'); window.closeMobileMenu();">
+        <button class="mobile-nav-btn" id="mobileTabNotificacionesBtn" data-testid="mobile-nav-notificaciones" onclick="switchRole('notificaciones'); window.closeMobileMenu();">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
             <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
           </svg>
           Notificaciones
         </button>
-        <button class="mobile-nav-btn" id="mobileTabOperadorBtn" onclick="switchRole('operador'); window.closeMobileMenu();">
+        <button class="mobile-nav-btn" id="mobileTabOperadorBtn" data-testid="mobile-nav-operador" onclick="switchRole('operador'); window.closeMobileMenu();">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
             <circle cx="9" cy="7" r="4"/>
@@ -289,13 +289,13 @@
       <div class="mobile-simulator-section">
         <span class="simulator-label">Simular Usuario (RBAC):</span>
         <div class="mobile-simulator-buttons">
-          <button class="btn btn-sm btn-outline mobile-simulator-btn active" id="mobileRoleAdmin" onclick="loginComo('ADMIN'); window.closeMobileMenu();">
+          <button class="btn btn-sm btn-outline mobile-simulator-btn active" id="mobileRoleAdmin" data-testid="mobile-quick-role-admin" onclick="loginComo('ADMIN'); window.closeMobileMenu();">
             👑 Admin Global
           </button>
-          <button class="btn btn-sm btn-outline mobile-simulator-btn" id="mobileRoleSupervisor" onclick="loginComo('SUPERVISOR'); window.closeMobileMenu();">
+          <button class="btn btn-sm btn-outline mobile-simulator-btn" id="mobileRoleSupervisor" data-testid="mobile-quick-role-supervisor" onclick="loginComo('SUPERVISOR'); window.closeMobileMenu();">
             🛡️ Supervisor Planta
           </button>
-          <button class="btn btn-sm btn-outline mobile-simulator-btn" id="mobileRoleOperador" onclick="loginComo('OPERADOR'); window.closeMobileMenu();">
+          <button class="btn btn-sm btn-outline mobile-simulator-btn" id="mobileRoleOperador" data-testid="mobile-quick-role-operador" onclick="loginComo('OPERADOR'); window.closeMobileMenu();">
             👷 Operador Terreno
           </button>
         </div>
@@ -322,7 +322,7 @@
     <!-- ============================================================== -->
     <!-- VISTA 0: INICIO DE SESIÓN FORMAL (ADR 0012 / Spec feat-018)    -->
     <!-- ============================================================== -->
-    <section class="view-panel" id="viewLogin" aria-labelledby="headingLogin">
+    <section class="view-panel active" id="viewLogin" data-testid="view-login" role="region" aria-label="Inicio de Sesión" aria-labelledby="headingLogin">
       <div class="login-wrapper">
         <!-- Botón flotante para alternar tema en pantalla de login -->
         <button class="theme-toggle-btn login-theme-toggle" id="loginThemeToggleBtn" onclick="window.Theme.toggle()" aria-label="Cambiar tema" title="Alternar modo Claro / Oscuro">
@@ -357,7 +357,7 @@
           </div>
 
           <!-- Alerta Inline de Error -->
-          <div id="loginErrorAlert" class="login-alert" style="display: none;" role="alert">
+          <div id="loginErrorAlert" class="login-alert" data-testid="login-error-alert" style="display: none;" role="alert">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <circle cx="12" cy="12" r="10"/>
               <line x1="12" y1="8" x2="12" y2="12"/>
@@ -366,12 +366,13 @@
             <span id="loginErrorMessage">Credenciales incorrectas</span>
           </div>
 
-          <form id="formLogin" class="login-form" onsubmit="handleLoginSubmit(event)">
+          <form id="formLogin" class="login-form" data-testid="form-login" onsubmit="handleLoginSubmit(event)">
             <div class="form-group">
               <label for="loginEmail" class="form-label">Correo Electrónico</label>
               <input 
                 type="email" 
                 id="loginEmail" 
+                data-testid="input-login-email"
                 name="email" 
                 class="form-input" 
                 placeholder="usuario@medidores.cl" 
@@ -386,6 +387,7 @@
                 <input 
                   type="password" 
                   id="loginPassword" 
+                  data-testid="input-login-password"
                   name="password" 
                   class="form-input" 
                   placeholder="Tu contraseña" 
@@ -396,6 +398,7 @@
                   type="button" 
                   class="btn-toggle-password" 
                   id="btnTogglePassword" 
+                  data-testid="btn-toggle-password"
                   onclick="toggleLoginPasswordVisibility()" 
                   aria-label="Mostrar u ocultar contraseña" 
                   title="Mostrar/ocultar contraseña"
@@ -405,7 +408,7 @@
               </div>
             </div>
 
-            <button type="submit" id="btnLoginSubmit" class="btn btn-primary btn-login-submit">
+            <button type="submit" id="btnLoginSubmit" data-testid="btn-login-submit" class="btn btn-primary btn-login-submit">
               <span id="btnLoginText">Ingresar al Sistema</span>
               <span id="btnLoginSpinner" class="spinner" style="display: none; margin-left: 0.5rem;"></span>
             </button>
@@ -415,13 +418,13 @@
           <div id="loginDevQuickAccess" class="login-dev-box" style="display: none;">
             <span class="dev-box-title">⚡ Acceso Rápido de Desarrollo (Dev):</span>
             <div class="dev-quick-buttons">
-              <button type="button" class="btn btn-sm btn-outline" id="devQuickAdmin" onclick="autofillAndLogin('admin@medidores.cl', 'demo1234')">
+              <button type="button" class="btn btn-sm btn-outline" id="devQuickAdmin" data-testid="dev-quick-role-admin" onclick="autofillAndLogin('admin@medidores.cl', 'demo1234')">
                 👑 Admin
               </button>
-              <button type="button" class="btn btn-sm btn-outline" id="devQuickSupervisor" onclick="autofillAndLogin('supervisor@medidores.cl', 'demo1234')">
+              <button type="button" class="btn btn-sm btn-outline" id="devQuickSupervisor" data-testid="dev-quick-role-supervisor" onclick="autofillAndLogin('supervisor@medidores.cl', 'demo1234')">
                 🛡️ Supervisor
               </button>
-              <button type="button" class="btn btn-sm btn-outline" id="devQuickOperador" onclick="autofillAndLogin('operador@medidores.cl', 'demo1234')">
+              <button type="button" class="btn btn-sm btn-outline" id="devQuickOperador" data-testid="dev-quick-role-operador" onclick="autofillAndLogin('operador@medidores.cl', 'demo1234')">
                 👷 Operador
               </button>
             </div>
@@ -433,23 +436,23 @@
     <!-- ============================================================== -->
     <!-- VISTA 1: DASHBOARD ADMINISTRADOR -->
     <!-- ============================================================== -->
-    <section class="view-panel" id="viewAdmin" aria-labelledby="headingAdmin">
+    <section class="view-panel" id="viewAdmin" data-testid="view-admin" role="region" aria-label="Dashboard Administrador" aria-labelledby="headingAdmin">
       <div class="view-header">
         <div>
           <h1 class="view-title" id="headingAdmin">Tablero Ejecutivo de Medición</h1>
           <p class="view-desc">Supervisión en tiempo real del parque de telemetría, alertas operativas y consumos netos auditados.</p>
         </div>
         <div class="view-actions">
-          <button class="btn btn-primary" id="btnOpenModalMedidor" onclick="openModal('modalMedidor')">
+          <button class="btn btn-primary" id="btnOpenModalMedidor" data-testid="btn-nuevo-medidor" onclick="openModal('modalMedidor')">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M12 5v14M5 12h14"/>
             </svg>
             Nuevo Medidor
           </button>
-          <button class="btn btn-outline" id="btnOpenModalInstalacion" onclick="openModal('modalInstalacion')">
+          <button class="btn btn-outline" id="btnOpenModalInstalacion" data-testid="btn-nueva-instalacion" onclick="openModal('modalInstalacion')">
             Nueva Instalación
           </button>
-          <button class="btn btn-outline" id="btnOpenModalTipo" onclick="openModal('modalTipo')">
+          <button class="btn btn-outline" id="btnOpenModalTipo" data-testid="btn-nuevo-tipo" onclick="openModal('modalTipo')">
             Nuevo Tipo
           </button>
         </div>
@@ -560,7 +563,7 @@
     <!-- ============================================================== -->
     <!-- VISTA 2: MODO TERRENO (OPERADOR) -->
     <!-- ============================================================== -->
-    <section class="view-panel" id="viewOperador" aria-labelledby="headingOperador">
+    <section class="view-panel" id="viewOperador" data-testid="view-operador" role="region" aria-label="Modo Terreno Operador" aria-labelledby="headingOperador">
       <div class="view-header">
         <div>
           <h1 class="view-title" id="headingOperador">Ingreso de Lecturas en Terreno</h1>
@@ -568,18 +571,29 @@
         </div>
       </div>
 
-      <!-- Selector de Instalación Asignada -->
-      <div class="operator-facility-selector">
-        <div class="form-group">
+      <!-- Selector de Instalación Asignada y Filtro de Búsqueda -->
+      <div class="operator-facility-selector" style="display: flex; gap: 1rem; align-items: flex-end; flex-wrap: wrap;">
+        <div class="form-group" style="flex: 1; min-width: 250px;">
           <label for="selectOperadorInstalacion" class="form-label">Instalación Asignada:</label>
-          <select id="selectOperadorInstalacion" class="form-select" onchange="onOperadorInstalacionChange()">
+          <select id="selectOperadorInstalacion" class="form-select" data-testid="select-operador-instalacion" onchange="onOperadorInstalacionChange()">
             <option value="">Cargando instalaciones asignadas...</option>
           </select>
+        </div>
+        <div class="form-group" style="flex: 1; min-width: 250px;">
+          <label for="filtroSearchMedidores" class="form-label">Buscar Medidor:</label>
+          <input 
+            type="search" 
+            id="filtroSearchMedidores" 
+            class="form-input" 
+            data-testid="filtro-search-medidores" 
+            placeholder="Filtrar por código, recurso o ubicación..." 
+            oninput="filtrarMedidoresOperador()" 
+          />
         </div>
       </div>
 
       <!-- Grid de Fichas de Medidor (Reutilizable) -->
-      <div class="meters-grid" id="gridMedidoresOperador">
+      <div class="meters-grid" id="gridMedidoresOperador" data-testid="grid-medidores-operador">
         <div class="empty-state">Selecciona una instalación para ver los medidores a tu cargo.</div>
       </div>
     </section>
@@ -587,14 +601,14 @@
     <!-- ============================================================== -->
     <!-- VISTA 3: GESTIÓN DE USUARIOS (ADMIN) -->
     <!-- ============================================================== -->
-    <section class="view-panel" id="viewUsuarios" aria-labelledby="headingUsuarios">
+    <section class="view-panel" id="viewUsuarios" data-testid="view-usuarios" role="region" aria-label="Gestión de Usuarios" aria-labelledby="headingUsuarios">
       <div class="view-header">
         <div>
           <h1 class="view-title" id="headingUsuarios">Gestión Integral de Usuarios y Permisos</h1>
           <p class="view-desc">Administra el directorio de usuarios, asignación de sedes operativas y restablecimiento de contraseñas.</p>
         </div>
         <div class="view-actions">
-          <button class="btn btn-primary" id="btnOpenModalNuevoUsuario" onclick="abrirModalNuevoUsuario()">
+          <button class="btn btn-primary" id="btnOpenModalNuevoUsuario" data-testid="btn-nuevo-usuario" onclick="abrirModalNuevoUsuario()">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
               <circle cx="9" cy="7" r="4"/>
@@ -609,10 +623,10 @@
       <div class="card mt-6">
         <div class="card-header">
           <h2 class="card-title">👥 Directorio de Usuarios</h2>
-          <button class="btn btn-ghost btn-sm" id="btnRefrescarUsuarios" onclick="cargarUsuariosAdmin()">Refrescar</button>
+          <button class="btn btn-ghost btn-sm" id="btnRefrescarUsuarios" data-testid="btn-refrescar-usuarios" onclick="cargarUsuariosAdmin()">Refrescar</button>
         </div>
         <div class="table-responsive">
-          <table class="data-table" id="tablaUsuarios">
+          <table class="data-table" id="tablaUsuarios" data-testid="tabla-usuarios">
             <thead>
               <tr>
                 <th>Usuario</th>
@@ -623,7 +637,7 @@
                 <th style="text-align: right;">Acciones</th>
               </tr>
             </thead>
-            <tbody id="tbodyUsuarios">
+            <tbody id="tbodyUsuarios" data-testid="tbody-usuarios">
               <tr>
                 <td colspan="6" class="empty-state">Cargando directorio de usuarios...</td>
               </tr>
@@ -636,20 +650,20 @@
     <!-- ============================================================== -->
     <!-- VISTA 4: REPORTES & CONCILIACIÓN DE FACTURAS (FEAT-007) -->
     <!-- ============================================================== -->
-    <section class="view-panel" id="viewReportes" aria-labelledby="headingReportes">
+    <section class="view-panel" id="viewReportes" data-testid="view-reportes" role="region" aria-label="Reportes y Facturación" aria-labelledby="headingReportes">
       <div class="view-header">
         <div>
           <h1 class="view-title" id="headingReportes">Consumos Consolidados &amp; Conciliación de Facturas</h1>
           <p class="view-desc">Auditoría de consumos netos por sede, exportación normalizada a CSV y conciliación metrológica con facturas de servicios.</p>
         </div>
         <div class="view-actions">
-          <button class="btn btn-secondary" onclick="exportarReporteCSV()">
+          <button class="btn btn-secondary" id="btnExportarCSV" data-testid="btn-exportar-csv" onclick="exportarReporteCSV()">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
             </svg>
             Exportar CSV
           </button>
-          <button class="btn btn-primary" onclick="openModal('modalRegistrarFactura')">
+          <button class="btn btn-primary" id="btnOpenModalRegistrarFactura" data-testid="btn-registrar-factura" onclick="openModal('modalRegistrarFactura')">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
               <line x1="12" y1="11" x2="12" y2="17"/>
@@ -665,13 +679,13 @@
         <div class="reports-filter-grid">
           <div class="form-group" style="margin-bottom: 0;">
             <label for="filtroReporteSede" class="form-label">Sede / Instalación:</label>
-            <select id="filtroReporteSede" class="form-select">
+            <select id="filtroReporteSede" class="form-select" data-testid="filtro-reporte-sede">
               <option value="">Todas las sedes</option>
             </select>
           </div>
           <div class="form-group" style="margin-bottom: 0;">
             <label for="filtroReporteRecurso" class="form-label">Tipo de Recurso:</label>
-            <select id="filtroReporteRecurso" class="form-select">
+            <select id="filtroReporteRecurso" class="form-select" data-testid="filtro-reporte-recurso">
               <option value="">Todos los recursos</option>
               <option value="AGUA">Agua Potable</option>
               <option value="LUZ">Electricidad</option>
@@ -681,14 +695,14 @@
           </div>
           <div class="form-group" style="margin-bottom: 0;">
             <label for="filtroReporteInicio" class="form-label">Fecha Inicio:</label>
-            <input type="date" id="filtroReporteInicio" class="form-input">
+            <input type="date" id="filtroReporteInicio" class="form-input" data-testid="filtro-reporte-inicio">
           </div>
           <div class="form-group" style="margin-bottom: 0;">
             <label for="filtroReporteFin" class="form-label">Fecha Fin:</label>
-            <input type="date" id="filtroReporteFin" class="form-input">
+            <input type="date" id="filtroReporteFin" class="form-input" data-testid="filtro-reporte-fin">
           </div>
           <div style="display: flex; gap: 0.5rem;">
-            <button class="btn btn-primary" onclick="cargarReporteConsumos()" style="flex: 1;">
+            <button class="btn btn-primary" id="btnFiltrarReporteConsumos" data-testid="btn-filtrar-reportes" onclick="cargarReporteConsumos()" style="flex: 1;">
               🔍 Filtrar
             </button>
           </div>
@@ -702,7 +716,7 @@
           <span class="badge badge-blue" id="badgeTotalReporteMedidores">0 medidores</span>
         </div>
         <div class="table-responsive">
-          <table class="data-table" id="tablaReporteConsumos">
+          <table class="data-table" id="tablaReporteConsumos" data-testid="tabla-reporte-consumos">
             <thead>
               <tr>
                 <th>Sede</th>
@@ -715,7 +729,7 @@
                 <th style="text-align: center;">Muestras</th>
               </tr>
             </thead>
-            <tbody id="tbodyReporteConsumos">
+            <tbody id="tbodyReporteConsumos" data-testid="tbody-reporte-consumos">
               <tr>
                 <td colspan="8" class="empty-state">Selecciona los filtros y presiona Filtrar.</td>
               </tr>
@@ -728,10 +742,10 @@
       <div class="card mt-6">
         <div class="card-header">
           <h2 class="card-title">🧾 Auditoría &amp; Conciliación de Facturas de Proveedores</h2>
-          <button class="btn btn-ghost btn-sm" onclick="cargarFacturasReportes()">Refrescar</button>
+          <button class="btn btn-ghost btn-sm" id="btnRefrescarFacturas" data-testid="btn-refrescar-facturas" onclick="cargarFacturasReportes()">Refrescar</button>
         </div>
         <div class="table-responsive">
-          <table class="data-table" id="tablaReporteFacturas">
+          <table class="data-table" id="tablaReporteFacturas" data-testid="tabla-reporte-facturas">
             <thead>
               <tr>
                 <th>N° Factura</th>
@@ -745,7 +759,7 @@
                 <th>Estado Conciliación</th>
               </tr>
             </thead>
-            <tbody id="tbodyReporteFacturas">
+            <tbody id="tbodyReporteFacturas" data-testid="tbody-reporte-facturas">
               <tr>
                 <td colspan="9" class="empty-state">Cargando facturas registradas...</td>
               </tr>
@@ -758,17 +772,17 @@
     <!-- ============================================================== -->
     <!-- VISTA 5: SISTEMA DE ALERTAS & ANOMALÍAS (FEAT-008) -->
     <!-- ============================================================== -->
-    <section class="view-panel" id="viewAlertas" aria-labelledby="headingAlertas">
+    <section class="view-panel" id="viewAlertas" data-testid="view-alertas" role="region" aria-label="Alertas Operativas" aria-labelledby="headingAlertas">
       <div class="view-header">
         <div>
           <h1 class="view-title" id="headingAlertas">Centro de Alertas &amp; Anomalías de Telemetría</h1>
           <p class="view-desc">Detección automática de consumos atípicos, fugas probables y medidores desconectados o sin reporte (+48h).</p>
         </div>
         <div class="view-actions">
-          <button class="btn btn-secondary" onclick="openModalConfigurarReglas()">
+          <button class="btn btn-secondary" id="btnOpenModalConfigurarReglas" data-testid="btn-configurar-reglas" onclick="openModalConfigurarReglas()">
             ⚙️ Ver / Crear Reglas
           </button>
-          <button class="btn btn-primary" onclick="evaluarAlertasEnVivo()">
+          <button class="btn btn-primary" id="btnEvaluarAlertasEnVivo" data-testid="btn-evaluar-alertas" onclick="evaluarAlertasEnVivo()">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <circle cx="11" cy="11" r="8"/>
               <line x1="21" y1="21" x2="16.65" y2="16.65"/>
@@ -823,17 +837,17 @@
         <div class="card-header">
           <h2 class="card-title">🔔 Registro de Incidentes Operativos</h2>
           <div class="header-filters">
-            <select id="filtroAlertasEstado" class="form-select filter-select" onchange="cargarAlertasIncidentes()">
+            <select id="filtroAlertasEstado" class="form-select filter-select" data-testid="filtro-alertas-estado" onchange="cargarAlertasIncidentes()">
               <option value="">Todos los estados</option>
               <option value="ABIERTO" selected>Solo Abiertos</option>
               <option value="EN_REVISION">En Revisión</option>
               <option value="RESUELTO">Resueltos</option>
             </select>
-            <button class="btn btn-ghost btn-sm" onclick="cargarAlertasIncidentes()">Refrescar</button>
+            <button class="btn btn-ghost btn-sm" id="btnRefrescarAlertas" data-testid="btn-refrescar-alertas" onclick="cargarAlertasIncidentes()">Refrescar</button>
           </div>
         </div>
         <div class="table-responsive">
-          <table class="data-table" id="tablaAlertasIncidentes">
+          <table class="data-table" id="tablaAlertasIncidentes" data-testid="tabla-alertas-incidentes">
             <thead>
               <tr>
                 <th>Fecha Detección</th>
@@ -846,7 +860,7 @@
                 <th style="text-align: right;">Acción</th>
               </tr>
             </thead>
-            <tbody id="tbodyAlertasIncidentes">
+            <tbody id="tbodyAlertasIncidentes" data-testid="tbody-alertas-incidentes">
               <tr>
                 <td colspan="8" class="empty-state">Cargando incidentes...</td>
               </tr>
@@ -859,14 +873,14 @@
     <!-- ============================================================== -->
     <!-- VISTA 6: MANTENIMIENTO & CALIBRACIÓN (FEAT-009) -->
     <!-- ============================================================== -->
-    <section class="view-panel" id="viewMantenimiento" aria-labelledby="headingMantenimiento">
+    <section class="view-panel" id="viewMantenimiento" data-testid="view-mantenimiento" role="region" aria-label="Mantenimiento Metrológico" aria-labelledby="headingMantenimiento">
       <div class="view-header">
         <div>
           <h1 class="view-title" id="headingMantenimiento">Mantenimiento, Calibración &amp; Control de Precintos</h1>
           <p class="view-desc">Bitácora física de intervenciones técnicas, trazabilidad de precintos de seguridad y registro de bajas o reemplazos.</p>
         </div>
         <div class="view-actions">
-          <button class="btn btn-primary" id="btnOpenModalMantenimiento" onclick="openModalRegistrarMantenimiento()">
+          <button class="btn btn-primary" id="btnOpenModalMantenimiento" data-testid="btn-registrar-mantenimiento" onclick="openModalRegistrarMantenimiento()">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
             </svg>
@@ -881,7 +895,7 @@
           <h2 class="card-title">🔍 Ficha Metrológica por Medidor</h2>
           <div class="header-filters">
             <label for="selectFichaMedidor" class="form-label" style="margin-bottom:0; font-size:0.85rem;">Medidor:</label>
-            <select id="selectFichaMedidor" class="form-select filter-select" onchange="consultarFichaMedidor()">
+            <select id="selectFichaMedidor" class="form-select filter-select" data-testid="select-ficha-medidor" onchange="consultarFichaMedidor()">
               <option value="">Selecciona un medidor...</option>
             </select>
           </div>
@@ -895,10 +909,10 @@
       <div class="card mt-6">
         <div class="card-header">
           <h2 class="card-title">📜 Bitácora General de Intervenciones Físicas</h2>
-          <button class="btn btn-ghost btn-sm" onclick="cargarMantenimientosBitacora()">Refrescar</button>
+          <button class="btn btn-ghost btn-sm" id="btnRefrescarMantenimientos" data-testid="btn-refrescar-mantenimientos" onclick="cargarMantenimientosBitacora()">Refrescar</button>
         </div>
         <div class="table-responsive">
-          <table class="data-table" id="tablaMantenimientosBitacora">
+          <table class="data-table" id="tablaMantenimientosBitacora" data-testid="tabla-mantenimientos-bitacora">
             <thead>
               <tr>
                 <th>Fecha</th>
@@ -912,7 +926,7 @@
                 <th>Detalles / Observaciones</th>
               </tr>
             </thead>
-            <tbody id="tbodyMantenimientosBitacora">
+            <tbody id="tbodyMantenimientosBitacora" data-testid="tbody-mantenimientos-bitacora">
               <tr>
                 <td colspan="9" class="empty-state">Cargando bitácora de intervenciones...</td>
               </tr>
@@ -925,20 +939,20 @@
     <!-- ============================================================== -->
     <!-- VISTA 7: PISTA DE AUDITORÍA & SEGURIDAD (FEAT-011 / HITO 8) -->
     <!-- ============================================================== -->
-    <section class="view-panel" id="viewAuditoria" aria-labelledby="headingAuditoria">
+    <section class="view-panel" id="viewAuditoria" data-testid="view-auditoria" role="region" aria-label="Pista de Auditoría" aria-labelledby="headingAuditoria">
       <div class="view-header">
         <div>
           <h1 class="view-title" id="headingAuditoria">Pista de Auditoría &amp; Seguridad Operativa</h1>
           <p class="view-desc">Bitácora inmutable de eventos críticos: cambios de rol, restablecimientos administrativos, bajas de equipos y cambios de precintos.</p>
         </div>
         <div class="view-actions">
-          <button class="btn btn-secondary" onclick="cargarEventosAuditoria()">
+          <button class="btn btn-secondary" id="btnRefrescarAuditoria" data-testid="btn-refrescar-auditoria" onclick="cargarEventosAuditoria()">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
             </svg>
             Refrescar
           </button>
-          <button class="btn btn-primary" id="btnGenerarBackup" onclick="ejecutarBackupSistema()">
+          <button class="btn btn-primary" id="btnGenerarBackup" data-testid="btn-generar-backup" onclick="ejecutarBackupSistema()">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
               <polyline points="17 21 17 13 7 13 7 21"/>
@@ -954,7 +968,7 @@
           <h2 class="card-title">🛡️ Eventos Críticos Registrados</h2>
           <div class="filters-row header-filters">
             <label for="filtroAuditoriaAccion" style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0;">Filtrar Acción:</label>
-            <select class="form-input form-select filter-select" id="filtroAuditoriaAccion" onchange="cargarEventosAuditoria()">
+            <select class="form-input form-select filter-select" id="filtroAuditoriaAccion" data-testid="filtro-auditoria-accion" onchange="cargarEventosAuditoria()">
               <option value="">Todas las acciones</option>
               <option value="CAMBIO_ROL">Cambios de Rol</option>
               <option value="RESET_PASSWORD_ADMIN">Reset de Contraseña</option>
@@ -965,7 +979,7 @@
           </div>
         </div>
         <div class="table-responsive">
-          <table class="data-table" id="tablaAuditoria">
+          <table class="data-table" id="tablaAuditoria" data-testid="tabla-auditoria">
             <thead>
               <tr>
                 <th>Fecha / Hora (UTC)</th>
@@ -976,7 +990,7 @@
                 <th>IP Origen</th>
               </tr>
             </thead>
-            <tbody id="tbodyAuditoria">
+            <tbody id="tbodyAuditoria" data-testid="tbody-auditoria">
               <tr>
                 <td colspan="6" class="empty-state">Cargando bitácora de auditoría...</td>
               </tr>
@@ -989,20 +1003,20 @@
     <!-- ============================================================== -->
     <!-- VISTA 8: INTEGRACIONES & WEBHOOKS (FEAT-012 / HITO 9) -->
     <!-- ============================================================== -->
-    <section class="view-panel" id="viewWebhooks" aria-labelledby="headingWebhooks">
+    <section class="view-panel" id="viewWebhooks" data-testid="view-webhooks" role="region" aria-label="Configuración de Webhooks" aria-labelledby="headingWebhooks">
       <div class="view-header">
         <div>
           <h1 class="view-title" id="headingWebhooks">Integraciones &amp; Despacho de Webhooks</h1>
           <p class="view-desc">Despacho estandarizado de alertas y eventos críticos a enrutadores y mensajería externa (Mismapp / Slack / Discord / etc.).</p>
         </div>
         <div class="view-actions">
-          <button class="btn btn-secondary" onclick="evaluarCalibracionesWebhooks()">
+          <button class="btn btn-secondary" id="btnEvaluarCalibracionesWebhooks" data-testid="btn-evaluar-calibraciones" onclick="evaluarCalibracionesWebhooks()">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
             </svg>
             Evaluar Calibraciones
           </button>
-          <button class="btn btn-primary" onclick="openModal('modalNuevoWebhook')">
+          <button class="btn btn-primary" id="btnOpenModalNuevoWebhook" data-testid="btn-nuevo-webhook" onclick="openModal('modalNuevoWebhook')">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <line x1="12" y1="5" x2="12" y2="19"/>
               <line x1="5" y1="12" x2="19" y2="12"/>
@@ -1015,10 +1029,10 @@
       <div class="card mt-6">
         <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
           <h2 class="card-title">📡 Endpoints Registrados</h2>
-          <button class="btn btn-sm btn-secondary" onclick="cargarWebhooks()">Refrescar</button>
+          <button class="btn btn-sm btn-secondary" id="btnRefrescarWebhooks" data-testid="btn-refrescar-webhooks" onclick="cargarWebhooks()">Refrescar</button>
         </div>
         <div class="table-responsive">
-          <table class="data-table" id="tablaWebhooks">
+          <table class="data-table" id="tablaWebhooks" data-testid="tabla-webhooks">
             <thead>
               <tr>
                 <th>Descripción</th>
@@ -1029,7 +1043,7 @@
                 <th style="text-align: right;">Acciones</th>
               </tr>
             </thead>
-            <tbody id="tbodyWebhooks">
+            <tbody id="tbodyWebhooks" data-testid="tbody-webhooks">
               <tr>
                 <td colspan="6" class="empty-state">Cargando endpoints de webhook...</td>
               </tr>
@@ -1042,7 +1056,7 @@
     <!-- ============================================================== -->
     <!-- VISTA 9: NOTIFICACIONES MULTICANAL (FEAT-014 / HITO 11) -->
     <!-- ============================================================== -->
-    <section class="view-panel" id="viewNotificaciones" aria-labelledby="headingNotificaciones">
+    <section class="view-panel" id="viewNotificaciones" data-testid="view-notificaciones" role="region" aria-label="Centro de Notificaciones" aria-labelledby="headingNotificaciones">
       <div class="view-header">
         <div>
           <h1 class="view-title" id="headingNotificaciones">Notificaciones Push &amp; Alertas por Telegram</h1>
@@ -1062,14 +1076,14 @@
             Recibe alertas emergentes directamente en tu teléfono móvil o computador portátil mediante el Service Worker de la PWA, incluso si la pestaña está cerrada o en segundo plano.
           </p>
           <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
-            <button class="btn btn-primary" id="btnTogglePush" onclick="toggleWebPushSubscription()">
+            <button class="btn btn-primary" id="btnTogglePush" data-testid="btn-toggle-push" onclick="toggleWebPushSubscription()">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
                 <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
               </svg>
               <span id="txtBtnTogglePush">Activar Notificaciones Web Push</span>
             </button>
-            <button class="btn btn-secondary" id="btnTestPush" onclick="probarWebPush()">
+            <button class="btn btn-secondary" id="btnTestPush" data-testid="btn-test-push" onclick="probarWebPush()">
               Probar Envío Push
             </button>
           </div>
@@ -1085,9 +1099,9 @@
           </p>
           <div class="form-group mb-4">
             <label class="form-label" for="inputTelegramMsg">Mensaje de diagnóstico personalizado</label>
-            <input type="text" class="form-input" id="inputTelegramMsg" placeholder="Prueba de alerta desde panel Medidores" value="Prueba de conectividad del Bot de Telegram">
+            <input type="text" class="form-input" id="inputTelegramMsg" data-testid="input-telegram-msg" placeholder="Prueba de alerta desde panel Medidores" value="Prueba de conectividad del Bot de Telegram">
           </div>
-          <button class="btn btn-secondary" onclick="probarTelegram()">
+          <button class="btn btn-secondary" id="btnTestTelegram" data-testid="btn-test-telegram" onclick="probarTelegram()">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <line x1="22" y1="2" x2="11" y2="13"/>
               <polygon points="22 2 15 22 11 13 2 9 22 2"/>
@@ -1101,10 +1115,10 @@
       <div class="card mt-6">
         <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
           <h2 class="card-title">📋 Bitácora de Entregas Multicanal</h2>
-          <button class="btn btn-sm btn-secondary" onclick="cargarHistorialNotificaciones()">Refrescar</button>
+          <button class="btn btn-sm btn-secondary" id="btnRefrescarNotificaciones" data-testid="btn-refrescar-notificaciones" onclick="cargarHistorialNotificaciones()">Refrescar</button>
         </div>
         <div class="table-responsive">
-          <table class="data-table" id="tablaHistorialNotificaciones">
+          <table class="data-table" id="tablaHistorialNotificaciones" data-testid="tabla-notificaciones">
             <thead>
               <tr>
                 <th>Canal</th>
@@ -1117,7 +1131,7 @@
                 <th>Fecha y Hora</th>
               </tr>
             </thead>
-            <tbody id="tbodyHistorialNotificaciones">
+            <tbody id="tbodyHistorialNotificaciones" data-testid="tbody-notificaciones">
               <tr>
                 <td colspan="8" class="empty-state">Cargando bitácora de notificaciones...</td>
               </tr>
@@ -1132,13 +1146,13 @@
   <!-- ============================================================== -->
   <!-- MODAL UNIFICADO: REGISTRO DE LECTURA (OPERADOR) -->
   <!-- ============================================================== -->
-  <div class="modal-backdrop" id="modalLectura" role="dialog" aria-modal="true" aria-labelledby="modalLecturaTitulo">
+  <div class="modal-backdrop" id="modalLectura" data-testid="modal-lectura" data-state="closed" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="modalLecturaTitulo">
     <div class="modal-box">
       <div class="modal-header">
         <h3 class="modal-title" id="modalLecturaTitulo">Registrar Lectura de Medición</h3>
-        <button class="btn-close" onclick="closeModal('modalLectura')" aria-label="Cerrar">&times;</button>
+        <button class="btn-close" id="btnCloseModalLectura" data-testid="btn-close-modal-lectura" onclick="closeModal('modalLectura')" aria-label="Cerrar">&times;</button>
       </div>
-      <form id="formLectura" onsubmit="submitLectura(event)">
+      <form id="formLectura" data-testid="form-lectura" onsubmit="submitLectura(event)">
         <input type="hidden" id="modalLecturaMedidorId">
         <div class="modal-body">
           <div style="background: var(--bg-surface-hover); padding: 0.85rem 1rem; border-radius: var(--radius-md); border: 1px solid var(--border-subtle); margin-bottom: 1.25rem;">
@@ -1157,23 +1171,23 @@
             <label for="modalLecturaInputValor" class="form-label">
               Nuevo Valor de Medición (<span id="modalLecturaUnidad">--</span>) *
             </label>
-            <input type="number" id="modalLecturaInputValor" class="form-input" style="font-size: 1.25rem; font-weight: 700; font-family: var(--font-mono);" required>
+            <input type="number" id="modalLecturaInputValor" data-testid="input-lectura-valor" class="form-input" style="font-size: 1.25rem; font-weight: 700; font-family: var(--font-mono);" required>
             <span class="form-hint">En medidores acumulativos, la cifra debe ser estrictamente mayor o igual a la previa.</span>
           </div>
 
           <div class="form-group">
             <label for="modalLecturaInputFecha" class="form-label">Fecha y Hora de Medición *</label>
-            <input type="datetime-local" id="modalLecturaInputFecha" class="form-input" required>
+            <input type="datetime-local" id="modalLecturaInputFecha" data-testid="input-lectura-fecha" class="form-input" required>
           </div>
 
           <div class="form-group">
             <label for="modalLecturaObservaciones" class="form-label">Observaciones de Inspección (Opcional)</label>
-            <textarea id="modalLecturaObservaciones" class="form-textarea" rows="2" placeholder="Ej. Medición rutinaria, precinto intacto..."></textarea>
+            <textarea id="modalLecturaObservaciones" data-testid="input-lectura-observaciones" class="form-textarea" rows="2" placeholder="Ej. Medición rutinaria, precinto intacto..."></textarea>
           </div>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-outline" onclick="closeModal('modalLectura')">Cancelar</button>
-          <button type="submit" class="btn btn-primary">Confirmar y Registrar</button>
+          <button type="submit" class="btn btn-primary" id="btnSubmitLectura" data-testid="btn-submit-lectura">Confirmar y Registrar</button>
         </div>
       </form>
     </div>
@@ -1182,30 +1196,30 @@
   <!-- ============================================================== -->
   <!-- MODAL: NUEVA INSTALACIÓN -->
   <!-- ============================================================== -->
-  <div class="modal-backdrop" id="modalInstalacion" role="dialog" aria-modal="true" aria-labelledby="modalInstalacionTitulo">
+  <div class="modal-backdrop" id="modalInstalacion" data-testid="modal-instalacion" data-state="closed" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="modalInstalacionTitulo">
     <div class="modal-box">
       <div class="modal-header">
         <h3 class="modal-title" id="modalInstalacionTitulo">Nueva Instalación / Sede</h3>
-        <button class="btn-close" onclick="closeModal('modalInstalacion')" aria-label="Cerrar">&times;</button>
+        <button class="btn-close" id="btnCloseModalInstalacion" data-testid="btn-close-modal-instalacion" onclick="closeModal('modalInstalacion')" aria-label="Cerrar">&times;</button>
       </div>
-      <form id="formInstalacion" onsubmit="submitNuevaInstalacion(event)">
+      <form id="formInstalacion" data-testid="form-instalacion" onsubmit="submitNuevaInstalacion(event)">
         <div class="modal-body">
           <div class="form-group">
             <label for="inputInstalacionNombre" class="form-label">Nombre de la Sede *</label>
-            <input type="text" id="inputInstalacionNombre" class="form-input" placeholder="Ej. Planta Maipú, Sede Providencia" required>
+            <input type="text" id="inputInstalacionNombre" data-testid="input-instalacion-nombre" class="form-input" placeholder="Ej. Planta Maipú, Sede Providencia" required>
           </div>
           <div class="form-group">
             <label for="inputInstalacionDireccion" class="form-label">Dirección Física *</label>
-            <input type="text" id="inputInstalacionDireccion" class="form-input" placeholder="Ej. Av. Central 4500, Sector Industrial" required>
+            <input type="text" id="inputInstalacionDireccion" data-testid="input-instalacion-direccion" class="form-input" placeholder="Ej. Av. Central 4500, Sector Industrial" required>
           </div>
           <div class="form-group">
             <label for="inputInstalacionDesc" class="form-label">Descripción Operativa</label>
-            <textarea id="inputInstalacionDesc" class="form-textarea" rows="2" placeholder="Ej. Central de almacenamiento y distribución"></textarea>
+            <textarea id="inputInstalacionDesc" data-testid="input-instalacion-desc" class="form-textarea" rows="2" placeholder="Ej. Central de almacenamiento y distribución"></textarea>
           </div>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-outline" onclick="closeModal('modalInstalacion')">Cancelar</button>
-          <button type="submit" class="btn btn-primary">Crear Instalación</button>
+          <button type="submit" class="btn btn-primary" id="btnSubmitInstalacion" data-testid="btn-submit-instalacion">Crear Instalación</button>
         </div>
       </form>
     </div>
@@ -1214,22 +1228,22 @@
   <!-- ============================================================== -->
   <!-- MODAL: NUEVO TIPO DE MEDIDOR -->
   <!-- ============================================================== -->
-  <div class="modal-backdrop" id="modalTipo" role="dialog" aria-modal="true" aria-labelledby="modalTipoTitulo">
+  <div class="modal-backdrop" id="modalTipo" data-testid="modal-tipo" data-state="closed" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="modalTipoTitulo">
     <div class="modal-box">
       <div class="modal-header">
         <h3 class="modal-title" id="modalTipoTitulo">Configurar Nuevo Tipo de Medidor</h3>
-        <button class="btn-close" onclick="closeModal('modalTipo')" aria-label="Cerrar">&times;</button>
+        <button class="btn-close" id="btnCloseModalTipo" data-testid="btn-close-modal-tipo" onclick="closeModal('modalTipo')" aria-label="Cerrar">&times;</button>
       </div>
-      <form id="formTipo" onsubmit="submitNuevoTipo(event)">
+      <form id="formTipo" data-testid="form-tipo" onsubmit="submitNuevoTipo(event)">
         <div class="modal-body">
           <div class="form-group">
             <label for="inputTipoNombre" class="form-label">Nombre Descriptivo *</label>
-            <input type="text" id="inputTipoNombre" class="form-input" placeholder="Ej. Agua Pozo Profundo, Diésel Turbina" required>
+            <input type="text" id="inputTipoNombre" data-testid="input-tipo-nombre" class="form-input" placeholder="Ej. Agua Pozo Profundo, Diésel Turbina" required>
           </div>
           <div class="form-grid-2">
             <div class="form-group">
               <label for="selectTipoRecurso" class="form-label">Recurso *</label>
-              <select id="selectTipoRecurso" class="form-select" required>
+              <select id="selectTipoRecurso" data-testid="select-tipo-recurso" class="form-select" required>
                 <option value="AGUA">Agua</option>
                 <option value="LUZ">Electricidad (Luz)</option>
                 <option value="GAS">Gas</option>
@@ -1239,12 +1253,12 @@
             </div>
             <div class="form-group">
               <label for="inputTipoUnidad" class="form-label">Unidad de Medida *</label>
-              <input type="text" id="inputTipoUnidad" class="form-input" placeholder="Ej. m3, L, kWh, %" required>
+              <input type="text" id="inputTipoUnidad" data-testid="input-tipo-unidad" class="form-input" placeholder="Ej. m3, L, kWh, %" required>
             </div>
           </div>
           <div class="form-group">
             <label for="selectTipoMedicion" class="form-label">Modo de Medición *</label>
-            <select id="selectTipoMedicion" class="form-select" required>
+            <select id="selectTipoMedicion" data-testid="select-tipo-medicion" class="form-select" required>
               <option value="ACUMULATIVO">Acumulativo / Secuencial (No decreciente)</option>
               <option value="NIVEL">Nivel (Capacidad de tanque / Fluctuante)</option>
               <option value="INSTANTANEO">Instantáneo (Flujo o potencia en tiempo real)</option>
@@ -1252,12 +1266,12 @@
           </div>
           <div class="form-group">
             <label for="inputTipoDesc" class="form-label">Descripción</label>
-            <textarea id="inputTipoDesc" class="form-textarea" rows="2" placeholder="Especificaciones técnicas o rango"></textarea>
+            <textarea id="inputTipoDesc" data-testid="input-tipo-desc" class="form-textarea" rows="2" placeholder="Especificaciones técnicas o rango"></textarea>
           </div>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-outline" onclick="closeModal('modalTipo')">Cancelar</button>
-          <button type="submit" class="btn btn-primary">Registrar Tipo</button>
+          <button type="submit" class="btn btn-primary" id="btnSubmitTipo" data-testid="btn-submit-tipo">Registrar Tipo</button>
         </div>
       </form>
     </div>
@@ -1266,24 +1280,24 @@
   <!-- ============================================================== -->
   <!-- MODAL: NUEVO MEDIDOR FÍSICO -->
   <!-- ============================================================== -->
-  <div class="modal-backdrop" id="modalMedidor" role="dialog" aria-modal="true" aria-labelledby="modalMedidorTitulo">
+  <div class="modal-backdrop" id="modalMedidor" data-testid="modal-medidor" data-state="closed" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="modalMedidorTitulo">
     <div class="modal-box">
       <div class="modal-header">
         <h3 class="modal-title" id="modalMedidorTitulo">Registrar Nuevo Medidor Físico</h3>
-        <button class="btn-close" onclick="closeModal('modalMedidor')" aria-label="Cerrar">&times;</button>
+        <button class="btn-close" id="btnCloseModalMedidor" data-testid="btn-close-modal-medidor" onclick="closeModal('modalMedidor')" aria-label="Cerrar">&times;</button>
       </div>
-      <form id="formMedidor" onsubmit="submitNuevoMedidor(event)">
+      <form id="formMedidor" data-testid="form-medidor" onsubmit="submitNuevoMedidor(event)">
         <div class="modal-body">
           <div class="form-grid-2">
             <div class="form-group">
               <label for="selectMedidorInstalacion" class="form-label">Instalación / Sede *</label>
-              <select id="selectMedidorInstalacion" class="form-select" required>
+              <select id="selectMedidorInstalacion" data-testid="select-medidor-instalacion" class="form-select" required>
                 <option value="">Selecciona instalación...</option>
               </select>
             </div>
             <div class="form-group">
               <label for="selectMedidorTipo" class="form-label">Tipo de Medidor *</label>
-              <select id="selectMedidorTipo" class="form-select" required>
+              <select id="selectMedidorTipo" data-testid="select-medidor-tipo" class="form-select" required>
                 <option value="">Selecciona tipo...</option>
               </select>
             </div>
@@ -1291,21 +1305,21 @@
           <div class="form-grid-2">
             <div class="form-group">
               <label for="inputMedidorCodigo" class="form-label">Código Identificador Único *</label>
-              <input type="text" id="inputMedidorCodigo" class="form-input font-mono" placeholder="Ej. MED-AG-001" required>
+              <input type="text" id="inputMedidorCodigo" data-testid="input-medidor-codigo" class="form-input font-mono" placeholder="Ej. MED-AG-001" required>
             </div>
             <div class="form-group">
               <label for="inputMedidorSerie" class="form-label">N° de Serie Físico</label>
-              <input type="text" id="inputMedidorSerie" class="form-input font-mono" placeholder="Ej. SN-883492">
+              <input type="text" id="inputMedidorSerie" data-testid="input-medidor-serie" class="form-input font-mono" placeholder="Ej. SN-883492">
             </div>
           </div>
           <div class="form-group">
             <label for="inputMedidorUbicacion" class="form-label">Ubicación Interna en Planta *</label>
-            <input type="text" id="inputMedidorUbicacion" class="form-input" placeholder="Ej. Sala de bombas piso -1, Caseta exterior" required>
+            <input type="text" id="inputMedidorUbicacion" data-testid="input-medidor-ubicacion" class="form-input" placeholder="Ej. Sala de bombas piso -1, Caseta exterior" required>
           </div>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-outline" onclick="closeModal('modalMedidor')">Cancelar</button>
-          <button type="submit" class="btn btn-primary">Registrar Medidor</button>
+          <button type="submit" class="btn btn-primary" id="btnSubmitMedidor" data-testid="btn-submit-medidor">Registrar Medidor</button>
         </div>
       </form>
     </div>
@@ -1314,27 +1328,27 @@
   <!-- ============================================================== -->
   <!-- MODAL: CAMBIAR CONTRASEÑA (SELF-SERVICE) -->
   <!-- ============================================================== -->
-  <div class="modal-backdrop" id="modalCambiarPassword" role="dialog" aria-modal="true" aria-labelledby="modalCambiarPassTitulo">
+  <div class="modal-backdrop" id="modalCambiarPassword" data-testid="modal-cambiar-password" data-state="closed" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="modalCambiarPassTitulo">
     <div class="modal-box">
       <div class="modal-header">
         <h3 class="modal-title" id="modalCambiarPassTitulo">🔑 Cambiar Mi Contraseña</h3>
-        <button class="btn-close" onclick="closeModal('modalCambiarPassword')" aria-label="Cerrar">&times;</button>
+        <button class="btn-close" id="btnCloseModalCambiarPassword" data-testid="btn-close-modal-cambiar-password" onclick="closeModal('modalCambiarPassword')" aria-label="Cerrar">&times;</button>
       </div>
-      <form id="formCambiarPassword" onsubmit="submitCambiarPassword(event)">
+      <form id="formCambiarPassword" data-testid="form-cambiar-password" onsubmit="submitCambiarPassword(event)">
         <div class="modal-body">
           <div class="form-group">
             <label for="inputPasswordActual" class="form-label">Contraseña Actual *</label>
-            <input type="password" id="inputPasswordActual" class="form-input" placeholder="Tu contraseña vigente" autocomplete="current-password" required>
+            <input type="password" id="inputPasswordActual" data-testid="input-password-actual" class="form-input" placeholder="Tu contraseña vigente" autocomplete="current-password" required>
           </div>
           <div class="form-group">
             <label for="inputPasswordNueva" class="form-label">Nueva Contraseña *</label>
-            <input type="password" id="inputPasswordNueva" class="form-input" minlength="8" placeholder="Mínimo 8 caracteres" autocomplete="new-password" required>
+            <input type="password" id="inputPasswordNueva" data-testid="input-password-nueva" class="form-input" minlength="8" placeholder="Mínimo 8 caracteres" autocomplete="new-password" required>
             <span class="form-hint">Debe contener al menos 8 caracteres para asegurar la cuenta.</span>
           </div>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-outline" onclick="closeModal('modalCambiarPassword')">Cancelar</button>
-          <button type="submit" class="btn btn-primary">Actualizar Contraseña</button>
+          <button type="submit" class="btn btn-primary" id="btnSubmitCambiarPassword" data-testid="btn-submit-cambiar-password">Actualizar Contraseña</button>
         </div>
       </form>
     </div>
@@ -1343,29 +1357,29 @@
   <!-- ============================================================== -->
   <!-- MODAL: NUEVO USUARIO (ADMIN) -->
   <!-- ============================================================== -->
-  <div class="modal-backdrop" id="modalNuevoUsuario" role="dialog" aria-modal="true" aria-labelledby="modalNuevoUsuarioTitulo">
+  <div class="modal-backdrop" id="modalNuevoUsuario" data-testid="modal-nuevo-usuario" data-state="closed" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="modalNuevoUsuarioTitulo">
     <div class="modal-box">
       <div class="modal-header">
         <h3 class="modal-title" id="modalNuevoUsuarioTitulo">👤 Crear Nuevo Usuario</h3>
-        <button class="btn-close" onclick="closeModal('modalNuevoUsuario')" aria-label="Cerrar">&times;</button>
+        <button class="btn-close" id="btnCloseModalNuevoUsuario" data-testid="btn-close-modal-nuevo-usuario" onclick="closeModal('modalNuevoUsuario')" aria-label="Cerrar">&times;</button>
       </div>
-      <form id="formNuevoUsuario" onsubmit="submitNuevoUsuario(event)">
+      <form id="formNuevoUsuario" data-testid="form-nuevo-usuario" onsubmit="submitNuevoUsuario(event)">
         <div class="modal-body">
           <div class="form-group">
             <label for="inputNuevoUsuarioNombre" class="form-label">Nombre Completo *</label>
-            <input type="text" id="inputNuevoUsuarioNombre" class="form-input" placeholder="Ej. Camila Morales" autocomplete="name" required>
+            <input type="text" id="inputNuevoUsuarioNombre" data-testid="input-nuevo-usuario-nombre" class="form-input" placeholder="Ej. Camila Morales" autocomplete="name" required>
           </div>
           <div class="form-group">
             <label for="inputNuevoUsuarioEmail" class="form-label">Correo Electrónico Corporativo *</label>
-            <input type="email" id="inputNuevoUsuarioEmail" class="form-input font-mono" placeholder="usuario@planta.cl" autocomplete="email" required>
+            <input type="email" id="inputNuevoUsuarioEmail" data-testid="input-nuevo-usuario-email" class="form-input font-mono" placeholder="usuario@planta.cl" autocomplete="email" required>
           </div>
           <div class="form-group">
             <label for="inputNuevoUsuarioPassword" class="form-label">Contraseña Temporal *</label>
-            <input type="password" id="inputNuevoUsuarioPassword" class="form-input" minlength="8" placeholder="Mínimo 8 caracteres" autocomplete="new-password" required>
+            <input type="password" id="inputNuevoUsuarioPassword" data-testid="input-nuevo-usuario-password" class="form-input" minlength="8" placeholder="Mínimo 8 caracteres" autocomplete="new-password" required>
           </div>
           <div class="form-group">
             <label for="selectNuevoUsuarioRol" class="form-label">Rol y Permisos *</label>
-            <select id="selectNuevoUsuarioRol" class="form-select" required>
+            <select id="selectNuevoUsuarioRol" data-testid="select-nuevo-usuario-rol" class="form-select" required>
               <option value="OPERADOR">OPERADOR (Captura de lecturas en terreno)</option>
               <option value="SUPERVISOR">SUPERVISOR (Creación de medidores en sedes asignadas)</option>
               <option value="ADMIN">ADMIN (Control global, sedes y usuarios)</option>
@@ -1381,7 +1395,7 @@
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-outline" onclick="closeModal('modalNuevoUsuario')">Cancelar</button>
-          <button type="submit" class="btn btn-primary">Crear Usuario</button>
+          <button type="submit" class="btn btn-primary" id="btnSubmitNuevoUsuario" data-testid="btn-submit-nuevo-usuario">Crear Usuario</button>
         </div>
       </form>
     </div>
@@ -1390,23 +1404,23 @@
   <!-- ============================================================== -->
   <!-- MODAL: EDITAR USUARIO & SEDES (ADMIN) -->
   <!-- ============================================================== -->
-  <div class="modal-backdrop" id="modalEditarUsuario" role="dialog" aria-modal="true" aria-labelledby="modalEditarUsuarioTitulo">
+  <div class="modal-backdrop" id="modalEditarUsuario" data-testid="modal-editar-usuario" data-state="closed" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="modalEditarUsuarioTitulo">
     <div class="modal-box">
       <div class="modal-header">
         <h3 class="modal-title" id="modalEditarUsuarioTitulo">✏️ Editar Usuario y Asignaciones</h3>
-        <button class="btn-close" onclick="closeModal('modalEditarUsuario')" aria-label="Cerrar">&times;</button>
+        <button class="btn-close" id="btnCloseModalEditarUsuario" data-testid="btn-close-modal-editar-usuario" onclick="closeModal('modalEditarUsuario')" aria-label="Cerrar">&times;</button>
       </div>
-      <form id="formEditarUsuario" onsubmit="submitEditarUsuario(event)">
+      <form id="formEditarUsuario" data-testid="form-editar-usuario" onsubmit="submitEditarUsuario(event)">
         <input type="hidden" id="editUsuarioId">
         <div class="modal-body">
           <div class="form-group">
             <label for="editUsuarioNombre" class="form-label">Nombre *</label>
-            <input type="text" id="editUsuarioNombre" class="form-input" required>
+            <input type="text" id="editUsuarioNombre" data-testid="input-edit-usuario-nombre" class="form-input" required>
           </div>
           <div class="form-grid-2">
             <div class="form-group">
               <label for="editUsuarioRol" class="form-label">Rol del Sistema *</label>
-              <select id="editUsuarioRol" class="form-select" required>
+              <select id="editUsuarioRol" data-testid="select-edit-usuario-rol" class="form-select" required>
                 <option value="OPERADOR">OPERADOR</option>
                 <option value="SUPERVISOR">SUPERVISOR</option>
                 <option value="ADMIN">ADMIN</option>
@@ -1414,7 +1428,7 @@
             </div>
             <div class="form-group">
               <label for="editUsuarioActivo" class="form-label">Estado de la Cuenta</label>
-              <select id="editUsuarioActivo" class="form-select">
+              <select id="editUsuarioActivo" data-testid="select-edit-usuario-activo" class="form-select">
                 <option value="true">Activo</option>
                 <option value="false">Desactivado / Inactivo</option>
               </select>
@@ -1430,7 +1444,7 @@
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-outline" onclick="closeModal('modalEditarUsuario')">Cancelar</button>
-          <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+          <button type="submit" class="btn btn-primary" id="btnSubmitEditarUsuario" data-testid="btn-submit-editar-usuario">Guardar Cambios</button>
         </div>
       </form>
     </div>
@@ -1439,13 +1453,13 @@
   <!-- ============================================================== -->
   <!-- MODAL: RESET PASSWORD (ADMIN) -->
   <!-- ============================================================== -->
-  <div class="modal-backdrop" id="modalResetPassword" role="dialog" aria-modal="true" aria-labelledby="modalResetPassTitulo">
+  <div class="modal-backdrop" id="modalResetPassword" data-testid="modal-reset-password" data-state="closed" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="modalResetPassTitulo">
     <div class="modal-box">
       <div class="modal-header">
         <h3 class="modal-title" id="modalResetPassTitulo">🔄 Restablecer Contraseña Administrativa</h3>
-        <button class="btn-close" onclick="closeModal('modalResetPassword')" aria-label="Cerrar">&times;</button>
+        <button class="btn-close" id="btnCloseModalResetPassword" data-testid="btn-close-modal-reset-password" onclick="closeModal('modalResetPassword')" aria-label="Cerrar">&times;</button>
       </div>
-      <form id="formResetPassword" onsubmit="submitResetPassword(event)">
+      <form id="formResetPassword" data-testid="form-reset-password" onsubmit="submitResetPassword(event)">
         <input type="hidden" id="resetUsuarioId">
         <div class="modal-body">
           <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 1rem;">
@@ -1453,12 +1467,12 @@
           </p>
           <div class="form-group">
             <label for="resetPasswordNueva" class="form-label">Nueva Contraseña *</label>
-            <input type="password" id="resetPasswordNueva" class="form-input" minlength="8" placeholder="Mínimo 8 caracteres" autocomplete="new-password" required>
+            <input type="password" id="resetPasswordNueva" data-testid="input-reset-password-nueva" class="form-input" minlength="8" placeholder="Mínimo 8 caracteres" autocomplete="new-password" required>
           </div>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-outline" onclick="closeModal('modalResetPassword')">Cancelar</button>
-          <button type="submit" class="btn btn-primary">Restablecer Clave</button>
+          <button type="submit" class="btn btn-primary" id="btnSubmitResetPassword" data-testid="btn-submit-reset-password">Restablecer Clave</button>
         </div>
       </form>
     </div>
@@ -1467,22 +1481,22 @@
   <!-- ============================================================== -->
   <!-- MODAL: REGISTRAR FACTURA DE PROVEEDOR (FEAT-007) -->
   <!-- ============================================================== -->
-  <div class="modal-backdrop" id="modalRegistrarFactura" role="dialog" aria-modal="true" aria-labelledby="modalFacturaTitulo">
+  <div class="modal-backdrop" id="modalRegistrarFactura" data-testid="modal-registrar-factura" data-state="closed" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="modalFacturaTitulo">
     <div class="modal-box">
       <div class="modal-header">
         <h3 class="modal-title" id="modalFacturaTitulo">🧾 Ingreso de Factura para Conciliación</h3>
-        <button class="btn-close" onclick="closeModal('modalRegistrarFactura')" aria-label="Cerrar">&times;</button>
+        <button class="btn-close" id="btnCloseModalRegistrarFactura" data-testid="btn-close-modal-registrar-factura" onclick="closeModal('modalRegistrarFactura')" aria-label="Cerrar">&times;</button>
       </div>
-      <form id="formRegistrarFactura" onsubmit="submitRegistrarFactura(event)">
+      <form id="formRegistrarFactura" data-testid="form-registrar-factura" onsubmit="submitRegistrarFactura(event)">
         <div class="modal-body">
           <div class="form-grid-2">
             <div class="form-group">
               <label for="facturaInstalacionId" class="form-label">Sede / Instalación *</label>
-              <select id="facturaInstalacionId" class="form-select" required></select>
+              <select id="facturaInstalacionId" data-testid="select-factura-instalacion" class="form-select" required></select>
             </div>
             <div class="form-group">
               <label for="facturaRecurso" class="form-label">Recurso *</label>
-              <select id="facturaRecurso" class="form-select" required>
+              <select id="facturaRecurso" data-testid="select-factura-recurso" class="form-select" required>
                 <option value="AGUA">Agua Potable</option>
                 <option value="LUZ">Electricidad</option>
                 <option value="GAS">Gas</option>
@@ -1493,28 +1507,28 @@
 
           <div class="form-group">
             <label for="facturaNumero" class="form-label">N° de Factura / Documento</label>
-            <input type="text" id="facturaNumero" class="form-input" placeholder="Ej: FAC-2026-90412">
+            <input type="text" id="facturaNumero" data-testid="input-factura-numero" class="form-input" placeholder="Ej: FAC-2026-90412">
           </div>
 
           <div class="form-grid-2">
             <div class="form-group">
               <label for="facturaPeriodoInicio" class="form-label">Inicio Período Facturado *</label>
-              <input type="date" id="facturaPeriodoInicio" class="form-input" required>
+              <input type="date" id="facturaPeriodoInicio" data-testid="input-factura-inicio" class="form-input" required>
             </div>
             <div class="form-group">
               <label for="facturaPeriodoFin" class="form-label">Fin Período Facturado *</label>
-              <input type="date" id="facturaPeriodoFin" class="form-input" required>
+              <input type="date" id="facturaPeriodoFin" data-testid="input-factura-fin" class="form-input" required>
             </div>
           </div>
 
           <div class="form-grid-2">
             <div class="form-group">
               <label for="facturaConsumo" class="form-label">Consumo Facturado *</label>
-              <input type="number" step="0.01" id="facturaConsumo" class="form-input" placeholder="Ej: 1450.5" required>
+              <input type="number" step="0.01" id="facturaConsumo" data-testid="input-factura-consumo" class="form-input" placeholder="Ej: 1450.5" required>
             </div>
             <div class="form-group">
               <label for="facturaUnidad" class="form-label">Unidad de Medida *</label>
-              <select id="facturaUnidad" class="form-select" required>
+              <select id="facturaUnidad" data-testid="select-factura-unidad" class="form-select" required>
                 <option value="M3">M3</option>
                 <option value="KWH">KWH</option>
                 <option value="LITROS">LITROS</option>
@@ -1524,17 +1538,17 @@
 
           <div class="form-group">
             <label for="facturaMonto" class="form-label">Monto Total Facturado ($CLP)</label>
-            <input type="number" id="facturaMonto" class="form-input" placeholder="Ej: 450000">
+            <input type="number" id="facturaMonto" data-testid="input-factura-monto" class="form-input" placeholder="Ej: 450000">
           </div>
 
           <div class="form-group">
             <label for="facturaNotas" class="form-label">Notas / Observaciones</label>
-            <textarea id="facturaNotas" class="form-input" rows="2" placeholder="Observaciones de la conciliación..."></textarea>
+            <textarea id="facturaNotas" data-testid="input-factura-notas" class="form-input" rows="2" placeholder="Observaciones de la conciliación..."></textarea>
           </div>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-outline" onclick="closeModal('modalRegistrarFactura')">Cancelar</button>
-          <button type="submit" class="btn btn-primary">Registrar y Conciliar</button>
+          <button type="submit" class="btn btn-primary" id="btnSubmitRegistrarFactura" data-testid="btn-submit-registrar-factura">Registrar y Conciliar</button>
         </div>
       </form>
     </div>
@@ -1543,13 +1557,13 @@
   <!-- ============================================================== -->
   <!-- MODAL: ATENDER / RESOLVER INCIDENTE (FEAT-008) -->
   <!-- ============================================================== -->
-  <div class="modal-backdrop" id="modalResolverIncidente" role="dialog" aria-modal="true" aria-labelledby="modalResolverTitulo">
+  <div class="modal-backdrop" id="modalResolverIncidente" data-testid="modal-resolver-incidente" data-state="closed" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="modalResolverTitulo">
     <div class="modal-box">
       <div class="modal-header">
         <h3 class="modal-title" id="modalResolverTitulo">🛡️ Atender Incidente de Alerta</h3>
-        <button class="btn-close" onclick="closeModal('modalResolverIncidente')" aria-label="Cerrar">&times;</button>
+        <button class="btn-close" id="btnCloseModalResolverIncidente" data-testid="btn-close-modal-resolver-incidente" onclick="closeModal('modalResolverIncidente')" aria-label="Cerrar">&times;</button>
       </div>
-      <form id="formResolverIncidente" onsubmit="submitResolverIncidente(event)">
+      <form id="formResolverIncidente" data-testid="form-resolver-incidente" onsubmit="submitResolverIncidente(event)">
         <input type="hidden" id="resolverIncidenteId">
         <div class="modal-body">
           <div style="background: var(--bg-surface-hover); padding: 0.85rem; border-radius: var(--radius-md); border: 1px solid var(--border-subtle); margin-bottom: 1rem;">
@@ -1559,7 +1573,7 @@
 
           <div class="form-group">
             <label for="resolverEstado" class="form-label">Nuevo Estado *</label>
-            <select id="resolverEstado" class="form-select" required>
+            <select id="resolverEstado" data-testid="select-resolver-estado" class="form-select" required>
               <option value="EN_REVISION">En Revisión (En investigación)</option>
               <option value="RESUELTO" selected>Resuelto (Problema subsanado)</option>
             </select>
@@ -1567,12 +1581,12 @@
 
           <div class="form-group">
             <label for="resolverNotas" class="form-label">Bitácora / Notas de Resolución *</label>
-            <textarea id="resolverNotas" class="form-input" rows="3" minlength="3" placeholder="Describe las acciones tomadas para atender o resolver la anomalía..." required></textarea>
+            <textarea id="resolverNotas" data-testid="input-resolver-notas" class="form-input" rows="3" minlength="3" placeholder="Describe las acciones tomadas para atender o resolver la anomalía..." required></textarea>
           </div>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-outline" onclick="closeModal('modalResolverIncidente')">Cancelar</button>
-          <button type="submit" class="btn btn-primary">Guardar Resolución</button>
+          <button type="submit" class="btn btn-primary" id="btnSubmitResolverIncidente" data-testid="btn-submit-resolver-incidente">Guardar Resolución</button>
         </div>
       </form>
     </div>
@@ -1581,22 +1595,22 @@
   <!-- ============================================================== -->
   <!-- MODAL: REGISTRAR MANTENIMIENTO / CALIBRACIÓN (FEAT-009) -->
   <!-- ============================================================== -->
-  <div class="modal-backdrop" id="modalRegistrarMantenimiento" role="dialog" aria-modal="true" aria-labelledby="modalMantenimientoTitulo">
+  <div class="modal-backdrop" id="modalRegistrarMantenimiento" data-testid="modal-registrar-mantenimiento" data-state="closed" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="modalMantenimientoTitulo">
     <div class="modal-box">
       <div class="modal-header">
         <h3 class="modal-title" id="modalMantenimientoTitulo">🛠️ Registro de Mantenimiento &amp; Precintos</h3>
-        <button class="btn-close" onclick="closeModal('modalRegistrarMantenimiento')" aria-label="Cerrar">&times;</button>
+        <button class="btn-close" id="btnCloseModalRegistrarMantenimiento" data-testid="btn-close-modal-registrar-mantenimiento" onclick="closeModal('modalRegistrarMantenimiento')" aria-label="Cerrar">&times;</button>
       </div>
-      <form id="formRegistrarMantenimiento" onsubmit="submitRegistrarMantenimiento(event)">
+      <form id="formRegistrarMantenimiento" data-testid="form-registrar-mantenimiento" onsubmit="submitRegistrarMantenimiento(event)">
         <div class="modal-body">
           <div class="form-grid-2">
             <div class="form-group">
               <label for="mantMedidorId" class="form-label">Medidor Objetivo *</label>
-              <select id="mantMedidorId" class="form-select" required onchange="onMantMedidorChange()"></select>
+              <select id="mantMedidorId" data-testid="select-mant-medidor" class="form-select" required onchange="onMantMedidorChange()"></select>
             </div>
             <div class="form-group">
               <label for="mantTipo" class="form-label">Tipo de Intervención *</label>
-              <select id="mantTipo" class="form-select" required onchange="onMantTipoChange()">
+              <select id="mantTipo" data-testid="select-mant-tipo" class="form-select" required onchange="onMantTipoChange()">
                 <option value="CALIBRACION">Calibración Periódica</option>
                 <option value="CAMBIO_PRECINTO">Cambio de Precinto de Seguridad</option>
                 <option value="REEMPLAZO_EQUIPO">Reemplazo / Sustitución de Equipo</option>
@@ -1609,55 +1623,55 @@
           <div class="form-grid-2">
             <div class="form-group">
               <label for="mantFecha" class="form-label">Fecha de Intervención *</label>
-              <input type="datetime-local" id="mantFecha" class="form-input" required>
+              <input type="datetime-local" id="mantFecha" data-testid="input-mant-fecha" class="form-input" required>
             </div>
             <div class="form-group">
               <label for="mantTecnico" class="form-label">Técnico / Especialista Responsable *</label>
-              <input type="text" id="mantTecnico" class="form-input" placeholder="Nombre completo o laboratorio" required>
+              <input type="text" id="mantTecnico" data-testid="input-mant-tecnico" class="form-input" placeholder="Nombre completo o laboratorio" required>
             </div>
           </div>
 
           <div id="mantSeccionPrecinto" class="form-grid-2">
             <div class="form-group">
               <label for="mantPrecintoAnt" class="form-label">Precinto Anterior</label>
-              <input type="text" id="mantPrecintoAnt" class="form-input" placeholder="Autocompletado si existe">
+              <input type="text" id="mantPrecintoAnt" data-testid="input-mant-precinto-ant" class="form-input" placeholder="Autocompletado si existe">
             </div>
             <div class="form-group">
               <label for="mantPrecintoNuevo" class="form-label">Nuevo Precinto de Seguridad</label>
-              <input type="text" id="mantPrecintoNuevo" class="form-input" placeholder="Ej: PREC-2026-990">
+              <input type="text" id="mantPrecintoNuevo" data-testid="input-mant-precinto-nuevo" class="form-input" placeholder="Ej: PREC-2026-990">
             </div>
           </div>
 
           <div id="mantSeccionCalibracion" class="form-grid-2">
             <div class="form-group">
               <label for="mantCertificado" class="form-label">Certificado / Informe Metrológico</label>
-              <input type="text" id="mantCertificado" class="form-input" placeholder="Ej: CERT-DICTUC-2026-09">
+              <input type="text" id="mantCertificado" data-testid="input-mant-certificado" class="form-input" placeholder="Ej: CERT-DICTUC-2026-09">
             </div>
             <div class="form-group">
               <label for="mantProxCalib" class="form-label">Próxima Calibración Recomendada</label>
-              <input type="date" id="mantProxCalib" class="form-input">
+              <input type="date" id="mantProxCalib" data-testid="input-mant-prox-calib" class="form-input">
             </div>
           </div>
 
           <div id="mantSeccionBaja" class="form-grid-2" style="display: none;">
             <div class="form-group">
               <label for="mantLecturaRetiro" class="form-label">Lectura Final de Retiro</label>
-              <input type="number" step="0.01" id="mantLecturaRetiro" class="form-input" placeholder=">= última lectura">
+              <input type="number" step="0.01" id="mantLecturaRetiro" data-testid="input-mant-lectura-retiro" class="form-input" placeholder=">= última lectura">
             </div>
             <div class="form-group" id="mantGroupNuevoCodigo">
               <label for="mantNuevoMedidorCodigo" class="form-label">Código del Medidor Sustituto</label>
-              <input type="text" id="mantNuevoMedidorCodigo" class="form-input" placeholder="Ej: MED-AG-01-V2">
+              <input type="text" id="mantNuevoMedidorCodigo" data-testid="input-mant-sustituto-codigo" class="form-input" placeholder="Ej: MED-AG-01-V2">
             </div>
           </div>
 
           <div class="form-group">
             <label for="mantObservaciones" class="form-label">Observaciones y Hallazgos Técnicos</label>
-            <textarea id="mantObservaciones" class="form-input" rows="2" placeholder="Detalle técnico de la intervención..."></textarea>
+            <textarea id="mantObservaciones" data-testid="input-mant-observaciones" class="form-input" rows="2" placeholder="Detalle técnico de la intervención..."></textarea>
           </div>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-outline" onclick="closeModal('modalRegistrarMantenimiento')">Cancelar</button>
-          <button type="submit" class="btn btn-primary">Registrar en Bitácora</button>
+          <button type="submit" class="btn btn-primary" id="btnSubmitRegistrarMantenimiento" data-testid="btn-submit-registrar-mantenimiento">Registrar en Bitácora</button>
         </div>
       </form>
     </div>
@@ -1666,16 +1680,16 @@
   <!-- ============================================================== -->
   <!-- MODAL: REGLAS DE ALERTA (FEAT-008) -->
   <!-- ============================================================== -->
-  <div class="modal-backdrop" id="modalConfigurarReglas" role="dialog" aria-modal="true" aria-labelledby="modalReglasTitulo">
+  <div class="modal-backdrop" id="modalConfigurarReglas" data-testid="modal-configurar-reglas" data-state="closed" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="modalReglasTitulo">
     <div class="modal-box modal-lg">
       <div class="modal-header">
         <h3 class="modal-title" id="modalReglasTitulo">⚙️ Configuración de Reglas de Detección</h3>
-        <button class="btn-close" onclick="closeModal('modalConfigurarReglas')" aria-label="Cerrar">&times;</button>
+        <button class="btn-close" id="btnCloseModalConfigurarReglas" data-testid="btn-close-modal-configurar-reglas" onclick="closeModal('modalConfigurarReglas')" aria-label="Cerrar">&times;</button>
       </div>
       <div class="modal-body">
         <h4 style="font-size: 0.95rem; margin-bottom: 0.75rem; color: var(--text-primary);">Reglas Activas en el Sistema</h4>
         <div class="table-responsive" style="margin-bottom: 1.5rem;">
-          <table class="data-table" id="tablaReglasAlertas">
+          <table class="data-table" id="tablaReglasAlertas" data-testid="tabla-reglas-alertas">
             <thead>
               <tr>
                 <th>Nombre</th>
@@ -1685,22 +1699,22 @@
                 <th>Estado</th>
               </tr>
             </thead>
-            <tbody id="tbodyReglasAlertas">
+            <tbody id="tbodyReglasAlertas" data-testid="tbody-reglas-alertas">
               <tr><td colspan="5" class="empty-state">Cargando reglas...</td></tr>
             </tbody>
           </table>
         </div>
 
         <h4 style="font-size: 0.95rem; margin-bottom: 0.75rem; color: var(--text-primary); border-top: 1px solid var(--border-subtle); padding-top: 1rem;">Crear Nueva Regla</h4>
-        <form id="formCrearRegla" onsubmit="submitCrearRegla(event)">
+        <form id="formCrearRegla" data-testid="form-crear-regla" onsubmit="submitCrearRegla(event)">
           <div class="form-grid-2">
             <div class="form-group">
               <label for="reglaNombre" class="form-label">Nombre de la Regla *</label>
-              <input type="text" id="reglaNombre" class="form-input" placeholder="Ej: Salto Crítico Electricidad" required>
+              <input type="text" id="reglaNombre" data-testid="input-regla-nombre" class="form-input" placeholder="Ej: Salto Crítico Electricidad" required>
             </div>
             <div class="form-group">
               <label for="reglaTipo" class="form-label">Tipo de Detección *</label>
-              <select id="reglaTipo" class="form-select" required>
+              <select id="reglaTipo" data-testid="select-regla-tipo" class="form-select" required>
                 <option value="SALTO_CONSUMO">Salto Atípico de Consumo (%)</option>
                 <option value="FUGA_PROBABLE">Fuga Continua Probable</option>
                 <option value="SIN_REPORTE">Sin Reporte / Desconectado (Horas)</option>
@@ -1710,7 +1724,7 @@
           <div class="form-grid-2">
             <div class="form-group">
               <label for="reglaRecurso" class="form-label">Recurso Específico</label>
-              <select id="reglaRecurso" class="form-select">
+              <select id="reglaRecurso" data-testid="select-regla-recurso" class="form-select">
                 <option value="">Aplica a todos los recursos</option>
                 <option value="AGUA">Agua Potable</option>
                 <option value="LUZ">Electricidad</option>
@@ -1720,10 +1734,10 @@
             </div>
             <div class="form-group">
               <label for="reglaUmbral" class="form-label">Valor del Umbral *</label>
-              <input type="number" step="0.1" id="reglaUmbral" class="form-input" placeholder="Ej: 50 (% o horas)" required>
+              <input type="number" step="0.1" id="reglaUmbral" data-testid="input-regla-umbral" class="form-input" placeholder="Ej: 50 (% o horas)" required>
             </div>
           </div>
-          <button type="submit" class="btn btn-secondary btn-sm" style="margin-top: 0.25rem;">+ Agregar Regla</button>
+          <button type="submit" class="btn btn-secondary btn-sm" id="btnSubmitCrearRegla" data-testid="btn-submit-crear-regla" style="margin-top: 0.25rem;">+ Agregar Regla</button>
         </form>
       </div>
       <div class="modal-footer">
@@ -1733,30 +1747,30 @@
   </div>
 
   <!-- MODAL: NUEVO WEBHOOK -->
-  <div class="modal-backdrop" id="modalNuevoWebhook" role="dialog" aria-modal="true" aria-labelledby="modalNuevoWebhookTitulo">
+  <div class="modal-backdrop" id="modalNuevoWebhook" data-testid="modal-nuevo-webhook" data-state="closed" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="modalNuevoWebhookTitulo">
     <div class="modal-box">
       <div class="modal-header">
         <h3 class="modal-title" id="modalNuevoWebhookTitulo">Registrar Endpoint de Webhook</h3>
-        <button class="btn-close" onclick="closeModal('modalNuevoWebhook')" aria-label="Cerrar">&times;</button>
+        <button class="btn-close" id="btnCloseModalNuevoWebhook" data-testid="btn-close-modal-nuevo-webhook" onclick="closeModal('modalNuevoWebhook')" aria-label="Cerrar">&times;</button>
       </div>
-      <form id="formNuevoWebhook" onsubmit="submitNuevoWebhook(event)">
+      <form id="formNuevoWebhook" data-testid="form-nuevo-webhook" onsubmit="submitNuevoWebhook(event)">
         <div class="form-group">
           <label class="form-label" for="webhookUrl">URL de Destino (HTTPS/HTTP) *</label>
-          <input type="url" class="form-input" id="webhookUrl" placeholder="https://router.mismapp.internal/api/webhooks/incoming" required>
+          <input type="url" class="form-input" id="webhookUrl" data-testid="input-webhook-url" placeholder="https://router.mismapp.internal/api/webhooks/incoming" required>
         </div>
         <div class="form-group">
           <label class="form-label" for="webhookDescripcion">Descripción / Nombre del Receptor *</label>
-          <input type="text" class="form-input" id="webhookDescripcion" placeholder="Enrutador Central Mismapp" required minlength="3">
+          <input type="text" class="form-input" id="webhookDescripcion" data-testid="input-webhook-descripcion" placeholder="Enrutador Central Mismapp" required minlength="3">
         </div>
         <div class="form-group">
           <label class="form-label" for="webhookSecret">Clave Secreta para Firma HMAC-SHA256 (Opcional)</label>
-          <input type="text" class="form-input" id="webhookSecret" placeholder="Dejar vacío o mín. 8 caracteres para firma segura" minlength="8">
+          <input type="text" class="form-input" id="webhookSecret" data-testid="input-webhook-secret" placeholder="Dejar vacío o mín. 8 caracteres para firma segura" minlength="8">
           <span style="font-size: 0.75rem; color: var(--text-secondary); display: block; margin-top: 4px;">Se enviará en cabecera <code>X-Webhook-Signature: sha256=&lt;hmac&gt;</code></span>
         </div>
         <div class="form-group">
           <label class="form-label">Eventos a Suscribir:</label>
           <div style="display: flex; flex-direction: column; gap: 0.4rem; font-size: 0.85rem; padding: 0.5rem; background: var(--bg-surface); border-radius: 6px;">
-            <label><input type="checkbox" id="evTodos" value="*" checked onchange="toggleEventosCheckboxes(this)"> <strong>Todos los eventos (*)</strong></label>
+            <label><input type="checkbox" id="evTodos" data-testid="chk-webhook-ev-todos" value="*" checked onchange="toggleEventosCheckboxes(this)"> <strong>Todos los eventos (*)</strong></label>
             <label><input type="checkbox" class="ev-item" value="alerta.incidente_detectado" disabled> 🚨 alerta.incidente_detectado (Fugas, saltos, sin reporte)</label>
             <label><input type="checkbox" class="ev-item" value="alerta.incidente_resuelto" disabled> ✅ alerta.incidente_resuelto</label>
             <label><input type="checkbox" class="ev-item" value="medidor.calibracion_proxima" disabled> ⏳ medidor.calibracion_proxima (Aviso preventivo)</label>
@@ -1766,21 +1780,21 @@
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" onclick="closeModal('modalNuevoWebhook')">Cancelar</button>
-          <button type="submit" class="btn btn-primary" id="btnGuardarWebhook">Guardar Webhook</button>
+          <button type="submit" class="btn btn-primary" id="btnGuardarWebhook" data-testid="btn-submit-nuevo-webhook">Guardar Webhook</button>
         </div>
       </form>
     </div>
   </div>
 
   <!-- MODAL: HISTORIAL DE ENTREGAS WEBHOOK -->
-  <div class="modal-backdrop" id="modalEntregasWebhook" role="dialog" aria-modal="true" aria-labelledby="modalEntregasTitulo">
+  <div class="modal-backdrop" id="modalEntregasWebhook" data-testid="modal-entregas-webhook" data-state="closed" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="modalEntregasTitulo">
     <div class="modal-box" style="max-width: 800px;">
       <div class="modal-header">
         <h3 class="modal-title" id="modalEntregasTitulo">Historial de Entregas del Webhook</h3>
-        <button class="btn-close" onclick="closeModal('modalEntregasWebhook')" aria-label="Cerrar">&times;</button>
+        <button class="btn-close" id="btnCloseModalEntregasWebhook" data-testid="btn-close-modal-entregas-webhook" onclick="closeModal('modalEntregasWebhook')" aria-label="Cerrar">&times;</button>
       </div>
       <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
-        <table class="data-table">
+        <table class="data-table" id="tablaEntregasWebhook" data-testid="tabla-entregas-webhook">
           <thead>
             <tr>
               <th>Fecha</th>
@@ -1791,7 +1805,7 @@
               <th>Error / Respuesta</th>
             </tr>
           </thead>
-          <tbody id="tbodyEntregasWebhook">
+          <tbody id="tbodyEntregasWebhook" data-testid="tbody-entregas-webhook">
             <tr>
               <td colspan="6" class="empty-state">Cargando historial de entregas...</td>
             </tr>

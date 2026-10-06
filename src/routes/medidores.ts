@@ -2,6 +2,7 @@ import { Hono, type Context } from "hono";
 import { z } from "zod";
 import type { Env, Variables } from "../types.js";
 import { registrarAuditoria } from "../audit.js";
+import { sqlInList } from "../db.js";
 
 type AppContext = Context<{ Bindings: Env; Variables: Variables }>;
 
@@ -39,8 +40,20 @@ const BajaTecnicaSchema = z.object({
 
 // 1. Listar medidores
 medidoresRouter.get("/api/medidores", async (c) => {
+  const user = c.get("user");
   const activoQuery = c.req.query("activo");
   const instalacionId = c.req.query("instalacionId");
+
+  if (user && user.rol !== "ADMIN") {
+    const allowed = user.allowedInstalacionIds || [];
+    if (instalacionId && !allowed.includes(instalacionId)) {
+      return c.json({ error: "FORBIDDEN", message: "Acceso denegado a esta instalación" }, 403);
+    }
+    if (allowed.length === 0) {
+      return c.json([]);
+    }
+  }
+
   let sql = `
     SELECT 
       m.id, m.codigo, m.numeroSerie, m.ubicacionInterna, m.activo, m.precintoActual,
@@ -60,6 +73,9 @@ medidoresRouter.get("/api/medidores", async (c) => {
   }
   if (instalacionId) {
     whereClauses.push(`m.instalacionId = '${instalacionId.replace(/'/g, "''")}'`);
+  } else if (user && user.rol !== "ADMIN") {
+    const allowed = user.allowedInstalacionIds || [];
+    whereClauses.push(`m.instalacionId IN (${sqlInList(allowed)})`);
   }
   if (whereClauses.length > 0) {
     sql += ` WHERE ${whereClauses.join(" AND ")}`;
@@ -143,6 +159,13 @@ medidoresRouter.post("/api/medidores", async (c) => {
 
   const id = crypto.randomUUID();
   const { instalacionId, tipoMedidorId, codigo, numeroSerie, ubicacionInterna, precintoActual } = parsed.data;
+
+  if (user.rol !== "ADMIN") {
+    const allowed = user.allowedInstalacionIds || [];
+    if (!allowed.includes(instalacionId)) {
+      return c.json({ error: "FORBIDDEN", message: "Acceso denegado a esta instalación" }, 403);
+    }
+  }
 
   try {
     await c.env.DB.prepare(`
@@ -237,6 +260,7 @@ medidoresRouter.post("/api/medidores/tipos", handleCrearTipo);
 
 // 4. Detalle de medidor
 medidoresRouter.get("/api/medidores/:id", async (c) => {
+  const user = c.get("user");
   const id = c.req.param("id");
   const medidor = await c.env.DB.prepare(`
     SELECT 
@@ -250,10 +274,34 @@ medidoresRouter.get("/api/medidores/:id", async (c) => {
     WHERE m.id = ?
   `)
     .bind(id)
-    .first();
+    .first<{
+      id: string;
+      codigo: string;
+      numeroSerie: string | null;
+      ubicacionInterna: string;
+      activo: number;
+      precintoActual: string | null;
+      fechaUltimaCalibracion: string | null;
+      fechaProximaCalibracion: string | null;
+      createdAt: string;
+      instalacionId: string;
+      instalacionNombre: string;
+      tipoMedidorId: string;
+      tipoNombre: string;
+      recurso: string;
+      unidad: string;
+      tipoMedicion: string;
+    }>();
 
   if (!medidor) {
     return c.json({ error: "NOT_FOUND", message: "Medidor no encontrado" }, 404);
+  }
+
+  if (user && user.rol !== "ADMIN") {
+    const allowed = user.allowedInstalacionIds || [];
+    if (!allowed.includes(medidor.instalacionId)) {
+      return c.json({ error: "FORBIDDEN", message: "Acceso denegado a este medidor" }, 403);
+    }
   }
 
   const { results: lecturas } = await c.env.DB.prepare(
@@ -293,8 +341,15 @@ medidoresRouter.post("/api/medidores/:id/calibrar", async (c) => {
 
   const { tecnicoResponsable, proximaCalibracion, certificadoCalibracion, observaciones } = parsed.data;
 
-  const medidor = await c.env.DB.prepare("SELECT id FROM medidores WHERE id = ?").bind(id).first();
+  const medidor = await c.env.DB.prepare("SELECT id, instalacionId FROM medidores WHERE id = ?").bind(id).first<{ id: string; instalacionId: string }>();
   if (!medidor) return c.json({ error: "NOT_FOUND", message: "Medidor no encontrado" }, 404);
+
+  if (user && user.rol !== "ADMIN") {
+    const allowed = user.allowedInstalacionIds || [];
+    if (!allowed.includes(medidor.instalacionId)) {
+      return c.json({ error: "FORBIDDEN", message: "Acceso denegado a este medidor" }, 403);
+    }
+  }
 
   const hoy = new Date().toISOString();
 
@@ -334,8 +389,15 @@ medidoresRouter.post("/api/medidores/:id/cambiar-precinto", async (c) => {
   const parsed = CambiarPrecintoSchema.safeParse(body);
   if (!parsed.success) return c.json({ error: "VALIDATION_ERROR", message: "Datos inválidos" }, 400);
 
-  const medidor = await c.env.DB.prepare("SELECT precintoActual FROM medidores WHERE id = ?").bind(id).first<{ precintoActual: string }>();
+  const medidor = await c.env.DB.prepare("SELECT id, instalacionId, precintoActual FROM medidores WHERE id = ?").bind(id).first<{ id: string; instalacionId: string; precintoActual: string }>();
   if (!medidor) return c.json({ error: "NOT_FOUND", message: "Medidor no encontrado" }, 404);
+
+  if (user && user.rol !== "ADMIN") {
+    const allowed = user.allowedInstalacionIds || [];
+    if (!allowed.includes(medidor.instalacionId)) {
+      return c.json({ error: "FORBIDDEN", message: "Acceso denegado a este medidor" }, 403);
+    }
+  }
 
   const { nuevoPrecinto, tecnicoResponsable, observaciones } = parsed.data;
 
@@ -371,8 +433,15 @@ medidoresRouter.post("/api/medidores/:id/baja-tecnica", async (c) => {
   const parsed = BajaTecnicaSchema.safeParse(body);
   if (!parsed.success) return c.json({ error: "VALIDATION_ERROR", message: "Datos inválidos" }, 400);
 
-  const medidor = await c.env.DB.prepare("SELECT id FROM medidores WHERE id = ?").bind(id).first();
+  const medidor = await c.env.DB.prepare("SELECT id, instalacionId FROM medidores WHERE id = ?").bind(id).first<{ id: string; instalacionId: string }>();
   if (!medidor) return c.json({ error: "NOT_FOUND", message: "Medidor no encontrado" }, 404);
+
+  if (user && user.rol !== "ADMIN") {
+    const allowed = user.allowedInstalacionIds || [];
+    if (!allowed.includes(medidor.instalacionId)) {
+      return c.json({ error: "FORBIDDEN", message: "Acceso denegado a este medidor" }, 403);
+    }
+  }
 
   const { motivoBaja, lecturaRetiro, nuevoMedidorCodigo, tecnicoResponsable, observaciones } = parsed.data;
 

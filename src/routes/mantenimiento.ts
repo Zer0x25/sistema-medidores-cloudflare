@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { z } from "zod";
 import type { Env, Variables } from "../types.js";
 import { registrarAuditoria } from "../audit.js";
+import { sqlInList } from "../db.js";
 
 export const mantenimientoRouter = new Hono<{ Bindings: Env; Variables: Variables }>();
 
@@ -21,6 +22,16 @@ const RegistroMantenimientoSchema = z.object({
 
 // Listar todos los registros de mantenimiento
 mantenimientoRouter.get("/api/mantenimiento", async (c) => {
+  const user = c.get("user");
+  let whereClause = "";
+  if (user && user.rol !== "ADMIN") {
+    const allowed = user.allowedInstalacionIds || [];
+    if (allowed.length === 0) {
+      return c.json([]);
+    }
+    whereClause = `WHERE m.instalacionId IN (${sqlInList(allowed)})`;
+  }
+
   const { results } = await c.env.DB.prepare(`
     SELECT 
       rm.*,
@@ -29,6 +40,7 @@ mantenimientoRouter.get("/api/mantenimiento", async (c) => {
     FROM registros_mantenimiento rm
     JOIN medidores m ON rm.medidorId = m.id
     JOIN instalaciones i ON m.instalacionId = i.id
+    ${whereClause}
     ORDER BY rm.fechaMantenimiento DESC LIMIT 100
   `).all();
 
@@ -37,6 +49,7 @@ mantenimientoRouter.get("/api/mantenimiento", async (c) => {
 
 // Historial y ficha de un medidor específico
 mantenimientoRouter.get("/api/mantenimiento/medidor/:medidorId", async (c) => {
+  const user = c.get("user");
   const medidorId = c.req.param("medidorId");
 
   const medidor = await c.env.DB.prepare(`
@@ -50,10 +63,35 @@ mantenimientoRouter.get("/api/mantenimiento/medidor/:medidorId", async (c) => {
     JOIN instalaciones i ON m.instalacionId = i.id
     JOIN tipos_medidor t ON m.tipoMedidorId = t.id
     WHERE m.id = ?
-  `).bind(medidorId).first();
+  `).bind(medidorId).first<{
+    id: string;
+    codigo: string;
+    numeroSerie: string | null;
+    ubicacionInterna: string;
+    activo: number;
+    precintoActual: string | null;
+    fechaUltimaCalibracion: string | null;
+    fechaProximaCalibracion: string | null;
+    createdAt: string;
+    instalacionId: string;
+    instalacionNombre: string;
+    tipoMedidorId: string;
+    tipoNombre: string;
+    recurso: string;
+    unidad: string;
+    tipoMedicion: string;
+    ultimaLecturaValor: number | null;
+  }>();
 
   if (!medidor) {
     return c.json({ error: "NOT_FOUND", message: "Medidor no encontrado" }, 404);
+  }
+
+  if (user && user.rol !== "ADMIN") {
+    const allowed = user.allowedInstalacionIds || [];
+    if (!allowed.includes(medidor.instalacionId)) {
+      return c.json({ error: "FORBIDDEN", message: "Acceso denegado a este medidor" }, 403);
+    }
   }
 
   const { results: historial } = await c.env.DB.prepare(`
@@ -84,6 +122,18 @@ mantenimientoRouter.post("/api/mantenimiento", async (c) => {
 
   const id = crypto.randomUUID();
   const data = parsed.data;
+
+  const medidor = await c.env.DB.prepare("SELECT id, instalacionId FROM medidores WHERE id = ?").bind(data.medidorId).first<{ id: string; instalacionId: string }>();
+  if (!medidor) {
+    return c.json({ error: "NOT_FOUND", message: "Medidor no encontrado" }, 404);
+  }
+
+  if (user && user.rol !== "ADMIN") {
+    const allowed = user.allowedInstalacionIds || [];
+    if (!allowed.includes(medidor.instalacionId)) {
+      return c.json({ error: "FORBIDDEN", message: "Acceso denegado a este medidor" }, 403);
+    }
+  }
 
   // Actualizar el medidor según el tipo de intervención
   if (data.tipo === "BAJA_TECNICA" || data.tipo === "REEMPLAZO_EQUIPO") {

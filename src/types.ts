@@ -15,6 +15,7 @@ export interface AuthUser {
   email: string;
   nombre: string;
   rol: "ADMIN" | "SUPERVISOR" | "OPERADOR";
+  allowedInstalacionIds?: string[];
 }
 
 export interface Variables {

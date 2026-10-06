@@ -9,7 +9,7 @@ Este archivo actúa como memoria persistente y tablero de control para humanos y
 - **Proyecto:** `sistema-medidores-cloudflare` (Cloudflare Workers + Hono + D1 + KV + Static Assets)
 - **Estado:** 100% autónomo, portable, probado y certificado tanto en entorno local (`wrangler dev`) como en producción (`https://metric.zer0x.org`).
 - **Dominio Edge:** `metric.zer0x.org`
-- **Última verificación de Quality Gate (`./scripts/verify.sh`):** Código de salida 0 (Typecheck 0 errores, ESLint 0 advertencias, Vitest 23/23 tests pasando en 0.5s).
+- **Última verificación de Quality Gate (`./scripts/verify.sh`):** Código de salida 0 (Typecheck 0 errores, ESLint 0 advertencias, Vitest 33/33 tests pasando en 0.6s).
 - **Test de Simetría de Contrato (`npm run test:contract:remote`):** 100% pasando sin fugas (`undefined`, `null`, `NaN`, `Invalid Date`, `[object Object]`).
 
 ---
@@ -20,18 +20,18 @@ Este archivo actúa como memoria persistente y tablero de control para humanos y
 | :--- | :--- | :--- | :--- |
 | **Health Probes** | `src/routes/health.ts` | ✅ 100% | `/healthz` (liveness), `/readyz` (readiness con ping a D1), `/api/health`, `/api/config` |
 | **Autenticación** | `src/routes/auth.ts`, `src/auth.ts` | ✅ 100% | Login JWT HS256, hash de contraseñas con scrypt, cambio de contraseña |
-| **Instalaciones** | `src/routes/instalaciones.ts` | ✅ 100% | Listado, creación, detalle y asignación con auditoría |
-| **Medidores y Tipos** | `src/routes/medidores.ts` | ✅ 100% | Catálogo, tipos de medidor, calibración, precintos, bajas técnicas |
-| **Lecturas** | `src/routes/lecturas.ts` | ✅ 100% | Ingesta con validación incremental y sincronización offline en lote (`batch-sync`) |
-| **Dashboard KPIs** | `src/routes/dashboard.ts` | ✅ 100% | Métricas consolidadas, consumos agregados SQL y últimas lecturas |
-| **Alertas & Reglas** | `src/routes/alertas.ts` | ✅ 100% | Motor de detección de saltos de consumo y medidores sin reporte |
-| **Mantenimiento** | `src/routes/mantenimiento.ts` | ✅ 100% | Órdenes de trabajo, transiciones de estado y asignación de técnicos |
+| **Instalaciones** | `src/routes/instalaciones.ts` | ✅ 100% | Listado con Location Scoping (feat-021), creación, detalle y asignación con auditoría |
+| **Medidores y Tipos** | `src/routes/medidores.ts` | ✅ 100% | Catálogo con Location Scoping (403 ante sede ajena), tipos de medidor, calibración, precintos, bajas técnicas |
+| **Lecturas** | `src/routes/lecturas.ts` | ✅ 100% | Ingesta con validación incremental, Location Scoping y sincronización offline en lote (`batch-sync`) |
+| **Dashboard KPIs** | `src/routes/dashboard.ts` | ✅ 100% | Métricas consolidadas, consumos agregados SQL y últimas lecturas filtradas por sedes asignadas |
+| **Alertas & Reglas** | `src/routes/alertas.ts` | ✅ 100% | Motor de detección, filtrado territorial y resolución protegida (403 ante incidentes ajenos) |
+| **Mantenimiento** | `src/routes/mantenimiento.ts` | ✅ 100% | Bitácora, órdenes de trabajo y fichas protegidas por sedes asignadas (403) |
 | **Auditoría Inmutable** | `src/routes/auditoria.ts`, `src/audit.ts` | ✅ 100% | Bitácora append-only inviolable con filtros y metadatos JSON |
-| **Reportes** | `src/routes/reportes.ts` | ✅ 100% | Resúmenes de consumo por recurso e instalación y exportación CSV |
+| **Reportes** | `src/routes/reportes.ts` | ✅ 100% | Resúmenes de consumo, facturas conciliadas y exportación CSV con Location Scoping estricto |
 | **Webhooks** | `src/routes/webhooks.ts` | ✅ 100% | Gestión de endpoints salientes, firma HMAC-SHA256 y bitácora de entregas |
 | **Notificaciones** | `src/routes/notificaciones.ts` | ✅ 100% | Canales Telegram y Web Push con auto-purga de tokens expirados |
 | **Demo Seed** | `src/routes/demo.ts` | ✅ 100% | Endpoint determinista para inicialización rápida de datos de prueba |
-| **Static Assets SPA** | `public/*` | ✅ 100% | Interfaz de usuario Aurora Design System, PWA Service Worker y sincronizador |
+| **Static Assets SPA** | `public/*` | ✅ 100% | UI Aurora Design System, Hash Router, telemetría `__DIAGNOSTICS__`, PWA Service Worker y sincronizador |
 
 ---
 
@@ -51,6 +51,8 @@ Este archivo actúa como memoria persistente y tablero de control para humanos y
 Este registro almacena los hitos o funcionalidades cerradas en el repo padre que están pendientes de ser portadas a Cloudflare Edge en sesiones dedicadas:
 
 - [x] **Hito 1 a 15 (Núcleo y Simetría):** Portado al 100% y certificado en producción (`metric.zer0x.org`).
+- [x] **Hito 15.3 (Explorabilidad DOM & Routing):** Sincronizado (`/#/[modulo]`, `data-state`, `window.__DIAGNOSTICS__`, `dataset.appReady`).
+- [x] **Hito 15.4 / feat-021 (Aislamiento Territorial RBAC Multi-Sede):** Sincronizado en Edge (`allowedInstalacionIds` en D1 SQL y 403 fail-closed en todas las rutas).
 - [ ] *(Pendiente)*: Cuando se completen nuevos hitos en el repo padre (ej: Hito 16), anótalos aquí con sus rutas, tablas e invariantes antes de iniciar la sesión de migración.
 
 ---

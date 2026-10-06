@@ -1,7 +1,10 @@
-import { Hono } from "hono";
+import { Hono, type Context } from "hono";
 import { z } from "zod";
 import type { Env, Variables } from "../types.js";
 import { registrarAuditoria } from "../audit.js";
+import { sqlInList } from "../db.js";
+
+type AppContext = Context<{ Bindings: Env; Variables: Variables }>;
 
 export const instalacionesRouter = new Hono<{ Bindings: Env; Variables: Variables }>();
 
@@ -12,12 +15,23 @@ const CrearInstalacionSchema = z.object({
 
 // Listar todas las instalaciones
 instalacionesRouter.get("/api/instalaciones", async (c) => {
+  const user = c.get("user");
+  let whereClause = "";
+  if (user && user.rol !== "ADMIN") {
+    const allowed = user.allowedInstalacionIds || [];
+    if (allowed.length === 0) {
+      return c.json([]);
+    }
+    whereClause = `WHERE i.id IN (${sqlInList(allowed)})`;
+  }
+
   const { results } = await c.env.DB.prepare(`
     SELECT 
       i.id, i.nombre, i.ubicacion, i.activa, i.createdAt, i.updatedAt,
       (SELECT COUNT(*) FROM medidores m WHERE m.instalacionId = i.id) as totalMedidores,
       (SELECT COUNT(*) FROM asignaciones_operadores a WHERE a.instalacionId = i.id) as totalOperadores
     FROM instalaciones i
+    ${whereClause}
     ORDER BY i.nombre ASC
   `).all();
 
@@ -71,7 +85,15 @@ instalacionesRouter.post("/api/instalaciones", async (c) => {
 
 // Obtener por ID
 instalacionesRouter.get("/api/instalaciones/:id", async (c) => {
+  const user = c.get("user");
   const id = c.req.param("id");
+  if (user && user.rol !== "ADMIN") {
+    const allowed = user.allowedInstalacionIds || [];
+    if (!allowed.includes(id)) {
+      return c.json({ error: "FORBIDDEN", message: "Acceso denegado a esta instalación" }, 403);
+    }
+  }
+
   const inst = await c.env.DB.prepare("SELECT * FROM instalaciones WHERE id = ?").bind(id).first<{
     id: string;
     nombre: string;
@@ -85,10 +107,6 @@ instalacionesRouter.get("/api/instalaciones/:id", async (c) => {
   }
   return c.json({ ...inst, direccion: inst.ubicacion, activa: Boolean(inst.activa) });
 });
-
-import type { Context } from "hono";
-
-type AppContext = Context<{ Bindings: Env; Variables: Variables }>;
 
 // Asignar operador a instalación (soporta tanto /asignar-operador como estándar /operadores)
 const handleAsignarOperador = async (c: AppContext) => {

@@ -1654,8 +1654,7 @@ body.not-authenticated #syncQueueBtn,
 body.not-authenticated .mobile-drawer,
 body.not-authenticated #mobileMenuDrawer,
 body.not-authenticated .mobile-drawer-backdrop,
-body.not-authenticated #mobileDrawerBackdrop,
-body.not-authenticated #btnLogout {
+body.not-authenticated #mobileDrawerBackdrop {
   display: none !important;
 }
 
@@ -1669,7 +1668,7 @@ body.not-authenticated .main-content {
 body.not-authenticated .view-panel:not(#viewLogin) {
   display: none !important;
 }
-body.not-authenticated #viewLogin.active {
+body.not-authenticated #viewLogin {
   display: block !important;
 }
 

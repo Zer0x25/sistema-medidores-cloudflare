@@ -71,12 +71,18 @@ async function inicializarApp() {
   await sessionSyncPromise;
   if (currentUser) {
     await cargarSelectsGlobales();
+    const hashRoute = parseRouteKeyFromHash(window.location.hash);
     if (currentUser.rol === "OPERADOR") {
-      switchRole("operador");
+      await switchRole("operador", { updateHash: true });
+    } else if (hashRoute && hashRoute !== "login") {
+      await switchRole(hashRoute, { updateHash: true });
     } else {
-      await cargarDashboard();
+      await switchRole("admin", { updateHash: true });
     }
+  } else {
+    mostrarPantallaLogin();
   }
+  document.body.dataset.appReady = "true";
 }
 
 // ------------------------------------------------------------------------------
@@ -95,6 +101,13 @@ function mostrarPantallaLogin() {
   const errAlert = document.getElementById("loginErrorAlert");
   if (passInput) passInput.value = "";
   if (errAlert) errAlert.style.display = "none";
+
+  if (window.location.hash !== "#/login") {
+    history.replaceState(null, "", "#/login");
+  }
+  if (window.__DIAGNOSTICS__) {
+    window.__DIAGNOSTICS__.activeRoute = "#/login";
+  }
 }
 
 function mostrarAppPrincipal() {
@@ -107,12 +120,6 @@ function mostrarAppPrincipal() {
 
   const viewLogin = document.getElementById("viewLogin");
   if (viewLogin) viewLogin.classList.remove("active");
-
-  if (currentUser?.rol === "OPERADOR") {
-    switchRole("operador");
-  } else {
-    switchRole("admin");
-  }
 }
 
 async function sincronizarSesionUsuario() {
@@ -138,8 +145,8 @@ async function sincronizarSesionUsuario() {
     return;
   }
 
-  // En Dev (devRoleSwitcher === true): si el usuario cerró sesión voluntariamente, mostrar login
-  if (sessionStorage.getItem("user_logged_out") === "true") {
+  // En Dev (devRoleSwitcher === true): si el usuario cerró sesión voluntariamente o la URL es #/login, mostrar login
+  if (sessionStorage.getItem("user_logged_out") === "true" || window.location.hash === "#/login") {
     mostrarPantallaLogin();
     return;
   }
@@ -210,10 +217,15 @@ async function handleLoginSubmit(e) {
     mostrarAppPrincipal();
     aplicarPermisosUI();
     await cargarSelectsGlobales();
+    const redirectTarget = sessionStorage.getItem("redirect_after_login");
+    sessionStorage.removeItem("redirect_after_login");
+    const targetRoute = redirectTarget ? parseRouteKeyFromHash(redirectTarget) : null;
     if (currentUser.rol === "OPERADOR") {
-      switchRole("operador");
+      await switchRole("operador", { updateHash: true });
+    } else if (targetRoute && targetRoute !== "login") {
+      await switchRole(targetRoute, { updateHash: true });
     } else {
-      switchRole("admin");
+      await switchRole("admin", { updateHash: true });
       await cargarDashboard();
     }
   } catch (err) {
@@ -425,44 +437,97 @@ function aplicarPermisosUI() {
 }
 
 // ------------------------------------------------------------------------------
-// 2. NAVEGACIÓN Y CONMUTACIÓN DE PESTAÑAS (VISTAS)
+// 2. NAVEGACIÓN Y ENRUTAMIENTO HASH (DEEP LINKING ADR 0015)
 // ------------------------------------------------------------------------------
-async function switchRole(role) {
+const ROUTE_HASH_MAP = {
+  admin: "#/dashboard",
+  dashboard: "#/dashboard",
+  reportes: "#/reportes",
+  alertas: "#/alertas",
+  mantenimiento: "#/mantenimiento",
+  usuarios: "#/usuarios",
+  auditoria: "#/auditoria",
+  webhooks: "#/webhooks",
+  notificaciones: "#/notificaciones",
+  operador: "#/operador",
+  terreno: "#/operador",
+  login: "#/login",
+};
+
+function parseRouteKeyFromHash(hash = "") {
+  const clean = (hash || "").replace(/^#\/?/, "").toLowerCase().split("?")[0].trim();
+  if (!clean || clean === "dashboard" || clean === "admin") return "admin";
+  if (clean === "reportes") return "reportes";
+  if (clean === "alertas") return "alertas";
+  if (clean === "mantenimiento") return "mantenimiento";
+  if (clean === "usuarios") return "usuarios";
+  if (clean === "auditoria") return "auditoria";
+  if (clean === "webhooks") return "webhooks";
+  if (clean === "notificaciones") return "notificaciones";
+  if (clean === "operador" || clean === "terreno") return "operador";
+  if (clean === "login") return "login";
+  return null;
+}
+
+function getHashForRouteKey(role) {
+  return ROUTE_HASH_MAP[role] || "#/dashboard";
+}
+
+async function switchRole(role, options = {}) {
+  const updateHash = options.updateHash !== false;
+  if (role === "dashboard") role = "admin";
+  if (role === "terreno") role = "operador";
+
   if (sessionSyncPromise) {
     await sessionSyncPromise;
   }
 
   if (!currentUser) {
+    const targetHash = getHashForRouteKey(role);
+    if (targetHash !== "#/login") {
+      sessionStorage.setItem("redirect_after_login", targetHash);
+    }
     mostrarPantallaLogin();
     return;
   }
 
   if (role !== "operador" && currentUser?.rol === "OPERADOR") {
     window.Toast.warning("El perfil OPERADOR solo tiene acceso al Modo Terreno.", "Permisos");
-    return;
+    role = "operador";
   }
 
   if (role === "usuarios" && currentUser?.rol !== "ADMIN") {
     window.Toast.warning("La gestión de usuarios está reservada para ADMIN.", "Permisos");
-    return;
+    role = "admin";
   }
 
   if (role === "auditoria" && currentUser?.rol !== "ADMIN") {
     window.Toast.warning("La pista de auditoría está reservada para ADMIN.", "Permisos");
-    return;
+    role = "admin";
   }
 
   if (role === "webhooks" && currentUser?.rol !== "ADMIN") {
     window.Toast.warning("La gestión de webhooks está reservada para ADMIN.", "Permisos");
-    return;
+    role = "admin";
   }
 
   if (role === "notificaciones" && currentUser?.rol !== "ADMIN" && currentUser?.rol !== "SUPERVISOR") {
     window.Toast.warning("La gestión de notificaciones está reservada para Administradores y Supervisores.", "Permisos");
-    return;
+    role = "admin";
   }
 
   currentRoleTab = role;
+
+  if (updateHash && typeof window !== "undefined") {
+    const targetHash = getHashForRouteKey(role);
+    if (window.location.hash !== targetHash) {
+      history.pushState(null, "", targetHash);
+    }
+  }
+  if (window.__DIAGNOSTICS__) {
+    window.__DIAGNOSTICS__.activeRoute = window.location.hash || getHashForRouteKey(role);
+  }
+
   const tabs = [
     document.getElementById("tabAdminBtn"),
     document.getElementById("tabReportesBtn"),
@@ -551,6 +616,18 @@ async function switchRole(role) {
     cargarSelectorOperador();
   }
 }
+
+// Escucha reactiva ante navegación con botones atrás/adelante del navegador
+window.addEventListener("hashchange", () => {
+  const targetKey = parseRouteKeyFromHash(window.location.hash);
+  if (targetKey && targetKey !== currentRoleTab) {
+    if (targetKey === "login") {
+      cerrarSesion();
+    } else {
+      switchRole(targetKey, { updateHash: false });
+    }
+  }
+});
 
 // ------------------------------------------------------------------------------
 // 3. DASHBOARD ADMINISTRATIVO / SUPERVISOR
@@ -677,12 +754,16 @@ async function onOperadorInstalacionChange() {
 
 async function cargarMedidoresInstalacion(instalacionId) {
   try {
+    const grid = document.getElementById("gridMedidoresOperador");
+    if (grid) {
+      grid.innerHTML = '<div class="empty-state" data-testid="loading-state" role="status" aria-live="polite">Cargando medidores físicos...</div>';
+    }
     const medidores = await window.api.medidores.getByInstalacion(instalacionId);
     medidoresOperadorCache = medidores;
 
-    const grid = document.getElementById("gridMedidoresOperador");
+    if (!grid) return;
     if (medidores.length === 0) {
-      grid.innerHTML = '<div class="empty-state">No hay medidores físicos instalados en esta sede.</div>';
+      grid.innerHTML = '<div class="empty-state" data-testid="empty-state" role="region">No hay medidores físicos instalados en esta sede.</div>';
       return;
     }
 
@@ -693,6 +774,33 @@ async function cargarMedidoresInstalacion(instalacionId) {
     window.Toast.error(err.message, "Error al cargar medidores");
   }
 }
+
+function filtrarMedidoresOperador() {
+  const query = document.getElementById("filtroSearchMedidores")?.value?.trim()?.toLowerCase() || "";
+  const grid = document.getElementById("gridMedidoresOperador");
+  if (!grid) return;
+
+  if (!medidoresOperadorCache || medidoresOperadorCache.length === 0) {
+    grid.innerHTML = '<div class="empty-state" data-testid="empty-state" role="region">No hay medidores físicos instalados en esta sede.</div>';
+    return;
+  }
+
+  const filtrados = medidoresOperadorCache.filter((m) => {
+    const codigo = (m.codigo || "").toLowerCase();
+    const recurso = (m.tipoMedidor?.recurso || "").toLowerCase();
+    const tipo = (m.tipoMedidor?.nombre || "").toLowerCase();
+    const ubicacion = (m.ubicacionInterna || "").toLowerCase();
+    return codigo.includes(query) || recurso.includes(query) || tipo.includes(query) || ubicacion.includes(query);
+  });
+
+  if (filtrados.length === 0) {
+    grid.innerHTML = '<div class="empty-state" data-testid="empty-state" role="region">No se encontraron medidores con el criterio ingresado.</div>';
+    return;
+  }
+
+  grid.innerHTML = filtrados.map((m) => window.Components.createMeterCard(m)).join("");
+}
+window.filtrarMedidoresOperador = filtrarMedidoresOperador;
 
 // ------------------------------------------------------------------------------
 // 5. REGISTRO DE LECTURAS (Captura en Terreno)
@@ -1199,7 +1307,8 @@ function inicializarFiltrosReporte() {
   const selectSede = document.getElementById("filtroReporteSede");
   const selectFacturaSede = document.getElementById("facturaInstalacionId");
   if (selectSede && instalacionesCache.length > 0) {
-    selectSede.innerHTML = `<option value="">Todas las sedes</option>` +
+    const defaultLabel = currentUser?.rol === "SUPERVISOR" ? "Todas mis sedes asignadas" : "Todas las sedes";
+    selectSede.innerHTML = `<option value="">${defaultLabel}</option>` +
       instalacionesCache.map((i) => `<option value="${i.id}">${escapeHtml(i.nombre)}</option>`).join("");
   }
   if (selectFacturaSede && instalacionesCache.length > 0) {

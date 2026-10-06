@@ -102,12 +102,21 @@ class ModalManager {
         this.close(e.target.id);
       }
     });
+    // Inicializar data-state en modales existentes
+    document.querySelectorAll(".modal-backdrop").forEach((m) => {
+      if (!m.hasAttribute("data-state")) {
+        m.setAttribute("data-state", m.classList.contains("open") ? "open" : "closed");
+        m.setAttribute("aria-hidden", m.classList.contains("open") ? "false" : "true");
+      }
+    });
   }
 
   open(modalId) {
     const modal = document.getElementById(modalId);
     if (!modal) return;
     modal.classList.add("open");
+    modal.setAttribute("data-state", "open");
+    modal.setAttribute("aria-hidden", "false");
     this.activeModal = modal;
     document.body.style.overflow = "hidden"; // Evitar scroll del fondo
 
@@ -122,6 +131,8 @@ class ModalManager {
     const modal = document.getElementById(modalId);
     if (!modal) return;
     modal.classList.remove("open");
+    modal.setAttribute("data-state", "closed");
+    modal.setAttribute("aria-hidden", "true");
     if (this.activeModal === modal) {
       this.activeModal = null;
     }
@@ -355,7 +366,7 @@ function escapeHtml(text) {
  */
 function createErrorState(message, onRetryFnName = "") {
   return `
-    <div class="empty-state error-recovery-state" style="text-align: center; padding: 2.5rem 1.5rem;">
+    <div class="empty-state error-recovery-state" data-testid="error-state" role="alert" style="text-align: center; padding: 2.5rem 1.5rem;">
       <div style="font-size: 2.5rem; margin-bottom: 0.75rem; color: var(--color-danger, #ef4444);">
         ⚠️
       </div>
@@ -365,7 +376,7 @@ function createErrorState(message, onRetryFnName = "") {
       </p>
       ${
         onRetryFnName
-          ? `<button class="btn btn-secondary" onclick="${escapeHtml(onRetryFnName)}()" style="display: inline-flex; align-items: center; gap: 0.5rem;">
+          ? `<button class="btn btn-secondary" data-testid="btn-retry" onclick="${escapeHtml(onRetryFnName)}()" style="display: inline-flex; align-items: center; gap: 0.5rem;">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.19"/>
               </svg>
@@ -381,7 +392,7 @@ function renderErrorState(container, message, onRetryCallback) {
   if (!container) return;
   const retryId = `retry-btn-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
   container.innerHTML = `
-    <div class="empty-state error-recovery-state" style="text-align: center; padding: 2.5rem 1.5rem;">
+    <div class="empty-state error-recovery-state" data-testid="error-state" role="alert" style="text-align: center; padding: 2.5rem 1.5rem;">
       <div style="font-size: 2.5rem; margin-bottom: 0.75rem; color: var(--color-danger, #ef4444);">
         ⚠️
       </div>
@@ -391,7 +402,7 @@ function renderErrorState(container, message, onRetryCallback) {
       </p>
       ${
         onRetryCallback
-          ? `<button id="${retryId}" class="btn btn-secondary" style="display: inline-flex; align-items: center; gap: 0.5rem;">
+          ? `<button id="${retryId}" data-testid="btn-retry" class="btn btn-secondary" style="display: inline-flex; align-items: center; gap: 0.5rem;">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.19"/>
               </svg>

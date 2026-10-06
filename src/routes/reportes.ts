@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { z } from "zod";
 import type { Env, Variables } from "../types.js";
 import { registrarAuditoria } from "../audit.js";
+import { sqlInList } from "../db.js";
 
 export const reportesRouter = new Hono<{ Bindings: Env; Variables: Variables }>();
 
@@ -19,6 +20,16 @@ const FacturaSchema = z.object({
 
 // Consumo agregado por instalación y recurso
 reportesRouter.get("/api/reportes/consumo-instalacion", async (c) => {
+  const user = c.get("user");
+  let whereClause = "";
+  if (user && user.rol !== "ADMIN") {
+    const allowed = user.allowedInstalacionIds || [];
+    if (allowed.length === 0) {
+      return c.json([]);
+    }
+    whereClause = `WHERE i.id IN (${sqlInList(allowed)})`;
+  }
+
   const { results } = await c.env.DB.prepare(`
     SELECT 
       i.id as instalacionId,
@@ -32,6 +43,7 @@ reportesRouter.get("/api/reportes/consumo-instalacion", async (c) => {
     JOIN medidores m ON m.instalacionId = i.id
     JOIN tipos_medidor t ON m.tipoMedidorId = t.id
     LEFT JOIN lecturas l ON l.medidorId = m.id
+    ${whereClause}
     GROUP BY i.id, t.recurso
     ORDER BY i.nombre, t.recurso
   `).all();
@@ -42,7 +54,9 @@ reportesRouter.get("/api/reportes/consumo-instalacion", async (c) => {
 // Registrar factura de servicio y conciliar inmediatamente
 reportesRouter.post("/api/reportes/facturas", async (c) => {
   const user = c.get("user");
-  if (!user || user.rol !== "ADMIN") return c.json({ error: "FORBIDDEN", message: "Permisos insuficientes" }, 403);
+  if (!user || (user.rol !== "ADMIN" && user.rol !== "SUPERVISOR")) {
+    return c.json({ error: "FORBIDDEN", message: "Permisos insuficientes" }, 403);
+  }
 
   const body = await c.req.json();
   const parsed = FacturaSchema.safeParse(body);
@@ -50,6 +64,13 @@ reportesRouter.post("/api/reportes/facturas", async (c) => {
 
   const id = crypto.randomUUID();
   const data = parsed.data;
+
+  if (user.rol !== "ADMIN") {
+    const allowed = user.allowedInstalacionIds || [];
+    if (!allowed.includes(data.instalacionId)) {
+      return c.json({ error: "FORBIDDEN", message: "Acceso denegado a esta instalación" }, 403);
+    }
+  }
 
   const inst = await c.env.DB.prepare("SELECT id FROM instalaciones WHERE id = ?").bind(data.instalacionId).first();
   if (!inst) return c.json({ error: "NOT_FOUND", message: "Instalación no encontrada" }, 404);
@@ -106,10 +127,21 @@ reportesRouter.post("/api/reportes/facturas", async (c) => {
 
 // Listar facturas
 reportesRouter.get("/api/reportes/facturas", async (c) => {
+  const user = c.get("user");
+  let whereClause = "";
+  if (user && user.rol !== "ADMIN") {
+    const allowed = user.allowedInstalacionIds || [];
+    if (allowed.length === 0) {
+      return c.json([]);
+    }
+    whereClause = `WHERE f.instalacionId IN (${sqlInList(allowed)})`;
+  }
+
   const { results } = await c.env.DB.prepare(`
     SELECT f.*, i.nombre as instalacionNombre
     FROM facturas_servicio f
     JOIN instalaciones i ON f.instalacionId = i.id
+    ${whereClause}
     ORDER BY f.periodoInicio DESC
   `).all();
 
@@ -131,6 +163,13 @@ reportesRouter.post("/api/reportes/conciliar/:id", async (c) => {
   }>();
 
   if (!factura) return c.json({ error: "NOT_FOUND", message: "Factura no encontrada" }, 404);
+
+  if (user && user.rol !== "ADMIN") {
+    const allowed = user.allowedInstalacionIds || [];
+    if (!allowed.includes(factura.instalacionId)) {
+      return c.json({ error: "FORBIDDEN", message: "Acceso denegado a esta instalación" }, 403);
+    }
+  }
 
   // Calcular consumo medido por medidores de esa instalación y recurso en el período
   const medicion = await c.env.DB.prepare(`
@@ -178,11 +217,22 @@ reportesRouter.post("/api/reportes/conciliar/:id", async (c) => {
 
 // Consumos detallados por medidor
 reportesRouter.get("/api/reportes/consumos", async (c) => {
+  const user = c.get("user");
   const instalacionId = c.req.query("instalacionId");
   const medidorId = c.req.query("medidorId");
   const recurso = c.req.query("recurso");
   const fechaInicio = c.req.query("fechaInicio");
   const fechaFin = c.req.query("fechaFin");
+
+  if (user && user.rol !== "ADMIN") {
+    const allowed = user.allowedInstalacionIds || [];
+    if (instalacionId && !allowed.includes(instalacionId)) {
+      return c.json({ error: "FORBIDDEN", message: "Acceso denegado a esta instalación" }, 403);
+    }
+    if (allowed.length === 0) {
+      return c.json([]);
+    }
+  }
 
   const conditions: string[] = [];
   const params: unknown[] = [];
@@ -190,6 +240,9 @@ reportesRouter.get("/api/reportes/consumos", async (c) => {
   if (instalacionId) {
     conditions.push("m.instalacionId = ?");
     params.push(instalacionId);
+  } else if (user && user.rol !== "ADMIN") {
+    const allowed = user.allowedInstalacionIds || [];
+    conditions.push(`m.instalacionId IN (${sqlInList(allowed)})`);
   }
   if (medidorId) {
     conditions.push("m.id = ?");
@@ -235,11 +288,27 @@ reportesRouter.get("/api/reportes/consumos", async (c) => {
 
 // Exportar reporte de consumos a CSV
 reportesRouter.get("/api/reportes/consumos/exportar-csv", async (c) => {
+  const user = c.get("user");
   const instalacionId = c.req.query("instalacionId");
   const medidorId = c.req.query("medidorId");
   const recurso = c.req.query("recurso");
   const fechaInicio = c.req.query("fechaInicio");
   const fechaFin = c.req.query("fechaFin");
+
+  if (user && user.rol !== "ADMIN") {
+    const allowed = user.allowedInstalacionIds || [];
+    if (instalacionId && !allowed.includes(instalacionId)) {
+      return c.json({ error: "FORBIDDEN", message: "Acceso denegado a esta instalación" }, 403);
+    }
+    if (allowed.length === 0) {
+      return new Response("Instalacion,Medidor,Recurso,Unidad,Lectura Inicial,Lectura Final,Consumo Neto,Total Lecturas\r\n", {
+        headers: {
+          "Content-Type": "text/csv; charset=utf-8",
+          "Content-Disposition": 'attachment; filename="reporte_consumos.csv"',
+        },
+      });
+    }
+  }
 
   const conditions: string[] = [];
   const params: unknown[] = [];
@@ -247,6 +316,9 @@ reportesRouter.get("/api/reportes/consumos/exportar-csv", async (c) => {
   if (instalacionId) {
     conditions.push("m.instalacionId = ?");
     params.push(instalacionId);
+  } else if (user && user.rol !== "ADMIN") {
+    const allowed = user.allowedInstalacionIds || [];
+    conditions.push(`m.instalacionId IN (${sqlInList(allowed)})`);
   }
   if (medidorId) {
     conditions.push("m.id = ?");

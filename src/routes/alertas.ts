@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { z } from "zod";
 import type { Env, Variables } from "../types.js";
 import { registrarAuditoria } from "../audit.js";
+import { sqlInList } from "../db.js";
 
 export const alertasRouter = new Hono<{ Bindings: Env; Variables: Variables }>();
 
@@ -53,10 +54,21 @@ alertasRouter.post("/api/alertas/reglas", async (c) => {
 
 // 3. Listar incidentes de alerta
 alertasRouter.get("/api/alertas/incidentes", async (c) => {
+  const user = c.get("user");
   const estado = c.req.query("estado");
   const instalacionId = c.req.query("instalacionId");
   const severidad = c.req.query("severidad");
   const tipo = c.req.query("tipo");
+
+  if (user && user.rol !== "ADMIN") {
+    const allowed = user.allowedInstalacionIds || [];
+    if (instalacionId && !allowed.includes(instalacionId)) {
+      return c.json({ error: "FORBIDDEN", message: "Acceso denegado a esta instalación" }, 403);
+    }
+    if (allowed.length === 0) {
+      return c.json([]);
+    }
+  }
 
   let sql = `
     SELECT 
@@ -77,6 +89,9 @@ alertasRouter.get("/api/alertas/incidentes", async (c) => {
   if (instalacionId) {
     sql += " AND a.instalacionId = ?";
     params.push(instalacionId);
+  } else if (user && user.rol !== "ADMIN") {
+    const allowed = user.allowedInstalacionIds || [];
+    sql += ` AND a.instalacionId IN (${sqlInList(allowed)})`;
   }
   if (severidad) {
     sql += " AND a.severidad = ?";
@@ -96,8 +111,15 @@ alertasRouter.get("/api/alertas/incidentes", async (c) => {
 alertasRouter.post("/api/alertas/incidentes/:id/resolver", async (c) => {
   const user = c.get("user");
   const id = c.req.param("id");
-  const incidente = await c.env.DB.prepare("SELECT id FROM incidentes_alerta WHERE id = ?").bind(id).first();
+  const incidente = await c.env.DB.prepare("SELECT id, instalacionId FROM incidentes_alerta WHERE id = ?").bind(id).first<{ id: string; instalacionId: string }>();
   if (!incidente) return c.json({ error: "NOT_FOUND", message: "Incidente no encontrado" }, 404);
+
+  if (user && user.rol !== "ADMIN") {
+    const allowed = user.allowedInstalacionIds || [];
+    if (!allowed.includes(incidente.instalacionId)) {
+      return c.json({ error: "FORBIDDEN", message: "Acceso denegado a este incidente" }, 403);
+    }
+  }
 
   const body = await c.req.json() as { estado?: string; notasResolucion?: string };
   const nuevoEstado = body.estado || "RESUELTO";
@@ -126,12 +148,32 @@ alertasRouter.post("/api/alertas/incidentes/:id/resolver", async (c) => {
 
 // 5. Resumen de incidentes para badges y KPIs
 alertasRouter.get("/api/alertas/resumen", async (c) => {
+  const user = c.get("user");
   const instalacionId = c.req.query("instalacionId");
+
+  if (user && user.rol !== "ADMIN") {
+    const allowed = user.allowedInstalacionIds || [];
+    if (instalacionId && !allowed.includes(instalacionId)) {
+      return c.json({ error: "FORBIDDEN", message: "Acceso denegado a esta instalación" }, 403);
+    }
+    if (allowed.length === 0) {
+      return c.json({
+        totalAbiertos: 0,
+        totalCriticos: 0,
+        totalAdvertencias: 0,
+        totalResueltos: 0,
+      });
+    }
+  }
+
   let where = "";
   const params: unknown[] = [];
   if (instalacionId) {
     where = "WHERE a.instalacionId = ?";
     params.push(instalacionId);
+  } else if (user && user.rol !== "ADMIN") {
+    const allowed = user.allowedInstalacionIds || [];
+    where = `WHERE a.instalacionId IN (${sqlInList(allowed)})`;
   }
 
   const { results } = await c.env.DB.prepare(`

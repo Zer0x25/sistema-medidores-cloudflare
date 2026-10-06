@@ -1,13 +1,42 @@
 import { Hono } from "hono";
 import type { Env, Variables } from "../types.js";
+import { sqlInList } from "../db.js";
 
 export const dashboardRouter = new Hono<{ Bindings: Env; Variables: Variables }>();
 
 // 1. KPIs del Dashboard (Contrato completo esperado por app.js)
 dashboardRouter.get("/api/dashboard/kpis", async (c) => {
+  const user = c.get("user");
+  let instWhere = "WHERE activa = 1";
+  let medidoresWhere = "WHERE m.activo = 1";
+  let lecturasWhere = "";
+  let alertasWhere = "WHERE estado = 'ABIERTO'";
+
+  if (user && user.rol !== "ADMIN") {
+    const allowed = user.allowedInstalacionIds || [];
+    if (allowed.length === 0) {
+      return c.json({
+        totalInstalaciones: 0,
+        totalMedidores: 0,
+        totalLecturas: 0,
+        medidoresPorRecurso: {},
+        medidoresTotales: 0,
+        medidoresActivos: 0,
+        lecturasRegistradas: 0,
+        alertasActivas: 0,
+        timestamp: new Date().toISOString(),
+      });
+    }
+    const inSql = sqlInList(allowed);
+    instWhere += ` AND id IN (${inSql})`;
+    medidoresWhere += ` AND m.instalacionId IN (${inSql})`;
+    lecturasWhere = `JOIN medidores m ON lecturas.medidorId = m.id WHERE m.instalacionId IN (${inSql})`;
+    alertasWhere += ` AND instalacionId IN (${inSql})`;
+  }
+
   // Total instalaciones activas
   const instStat = await c.env.DB.prepare(
-    "SELECT COUNT(*) as total FROM instalaciones WHERE activa = 1"
+    `SELECT COUNT(*) as total FROM instalaciones ${instWhere}`
   ).first<{ total: number }>();
 
   // Total medidores activos y desglose por recurso
@@ -15,7 +44,7 @@ dashboardRouter.get("/api/dashboard/kpis", async (c) => {
     SELECT t.recurso, COUNT(m.id) as cantidad
     FROM medidores m
     JOIN tipos_medidor t ON m.tipoMedidorId = t.id
-    WHERE m.activo = 1
+    ${medidoresWhere}
     GROUP BY t.recurso
   `).all<{ recurso: string; cantidad: number }>();
 
@@ -28,12 +57,12 @@ dashboardRouter.get("/api/dashboard/kpis", async (c) => {
 
   // Total lecturas
   const lecturasStat = await c.env.DB.prepare(
-    "SELECT COUNT(*) as total FROM lecturas"
+    `SELECT COUNT(*) as total FROM lecturas ${lecturasWhere}`
   ).first<{ total: number }>();
 
   // Total alertas abiertas
   const alertasStat = await c.env.DB.prepare(
-    "SELECT COUNT(*) as total FROM incidentes_alerta WHERE estado = 'ABIERTO'"
+    `SELECT COUNT(*) as total FROM incidentes_alerta ${alertasWhere}`
   ).first<{ total: number }>();
 
   return c.json({
@@ -52,8 +81,18 @@ dashboardRouter.get("/api/dashboard/kpis", async (c) => {
 
 // 2. Medidores desatendidos (+24h)
 dashboardRouter.get("/api/dashboard/desatendidos", async (c) => {
+  const user = c.get("user");
   const horasParam = c.req.query("horas");
   const horasUmbral = horasParam ? parseInt(horasParam, 10) : 24;
+
+  let whereExtra = "";
+  if (user && user.rol !== "ADMIN") {
+    const allowed = user.allowedInstalacionIds || [];
+    if (allowed.length === 0) {
+      return c.json([]);
+    }
+    whereExtra = `AND m.instalacionId IN (${sqlInList(allowed)})`;
+  }
 
   const { results: medidores } = await c.env.DB.prepare(`
     SELECT 
@@ -66,7 +105,7 @@ dashboardRouter.get("/api/dashboard/desatendidos", async (c) => {
     FROM medidores m
     JOIN instalaciones i ON m.instalacionId = i.id
     LEFT JOIN lecturas l ON l.medidorId = m.id
-    WHERE m.activo = 1
+    WHERE m.activo = 1 ${whereExtra}
     GROUP BY m.id
   `).all<{
     medidorId: string;
@@ -117,6 +156,16 @@ dashboardRouter.get("/api/dashboard/desatendidos", async (c) => {
 
 // 3. Consumo neto agrupado por instalación y recurso
 dashboardRouter.get("/api/dashboard/consumos", async (c) => {
+  const user = c.get("user");
+  let whereExtra = "";
+  if (user && user.rol !== "ADMIN") {
+    const allowed = user.allowedInstalacionIds || [];
+    if (allowed.length === 0) {
+      return c.json([]);
+    }
+    whereExtra = `WHERE i.id IN (${sqlInList(allowed)})`;
+  }
+
   const { results } = await c.env.DB.prepare(`
     SELECT 
       i.id as instalacionId,
@@ -134,6 +183,7 @@ dashboardRouter.get("/api/dashboard/consumos", async (c) => {
       GROUP BY medidorId
       HAVING countLec >= 2
     ) sub ON sub.medidorId = m.id
+    ${whereExtra}
     GROUP BY i.id, t.recurso
     ORDER BY i.nombre, t.recurso
   `).all<{
@@ -150,8 +200,18 @@ dashboardRouter.get("/api/dashboard/consumos", async (c) => {
 
 // 4. Actividad reciente de telemetría (últimas lecturas con formato compatible con components.js)
 dashboardRouter.get("/api/dashboard/actividad-reciente", async (c) => {
+  const user = c.get("user");
   const limitParam = c.req.query("limit");
   const limit = limitParam ? parseInt(limitParam, 10) : 10;
+
+  let whereExtra = "";
+  if (user && user.rol !== "ADMIN") {
+    const allowed = user.allowedInstalacionIds || [];
+    if (allowed.length === 0) {
+      return c.json([]);
+    }
+    whereExtra = `WHERE m.instalacionId IN (${sqlInList(allowed)})`;
+  }
 
   const { results } = await c.env.DB.prepare(`
     SELECT 
@@ -172,6 +232,7 @@ dashboardRouter.get("/api/dashboard/actividad-reciente", async (c) => {
     JOIN medidores m ON l.medidorId = m.id
     JOIN instalaciones i ON m.instalacionId = i.id
     JOIN tipos_medidor t ON m.tipoMedidorId = t.id
+    ${whereExtra}
     ORDER BY l.fechaLectura DESC
     LIMIT ?
   `).bind(limit).all<{

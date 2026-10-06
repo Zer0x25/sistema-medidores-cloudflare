@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { z } from "zod";
 import type { Env, Variables } from "../types.js";
+import { sqlInList } from "../db.js";
 
 export const lecturasRouter = new Hono<{ Bindings: Env; Variables: Variables }>();
 
@@ -15,7 +16,16 @@ const LecturaInputSchema = z.object({
 
 // Listar lecturas recientes
 lecturasRouter.get("/api/lecturas", async (c) => {
+  const user = c.get("user");
   const medidorId = c.req.query("medidorId");
+
+  if (user && user.rol !== "ADMIN") {
+    const allowed = user.allowedInstalacionIds || [];
+    if (allowed.length === 0) {
+      return c.json([]);
+    }
+  }
+
   let sql = `
     SELECT 
       l.id, l.valor, l.fechaLectura, l.notas, l.createdAt,
@@ -25,8 +35,23 @@ lecturasRouter.get("/api/lecturas", async (c) => {
     JOIN medidores m ON l.medidorId = m.id
     JOIN tipos_medidor t ON m.tipoMedidorId = t.id
   `;
+
+  const whereClauses: string[] = [];
   if (medidorId) {
-    sql += ` WHERE l.medidorId = '${medidorId.replace(/'/g, "''")}'`;
+    if (user && user.rol !== "ADMIN") {
+      const allowed = user.allowedInstalacionIds || [];
+      const m = await c.env.DB.prepare("SELECT instalacionId FROM medidores WHERE id = ?").bind(medidorId).first<{ instalacionId: string }>();
+      if (!m || !allowed.includes(m.instalacionId)) {
+        return c.json({ error: "FORBIDDEN", message: "Acceso denegado a este medidor" }, 403);
+      }
+    }
+    whereClauses.push(`l.medidorId = '${medidorId.replace(/'/g, "''")}'`);
+  } else if (user && user.rol !== "ADMIN") {
+    const allowed = user.allowedInstalacionIds || [];
+    whereClauses.push(`m.instalacionId IN (${sqlInList(allowed)})`);
+  }
+  if (whereClauses.length > 0) {
+    sql += ` WHERE ${whereClauses.join(" AND ")}`;
   }
   sql += " ORDER BY l.fechaLectura DESC LIMIT 50";
 
@@ -84,16 +109,24 @@ lecturasRouter.post("/api/lecturas", async (c) => {
 
   // 1. Obtener tipo de medición del medidor
   const medidor = await c.env.DB.prepare(`
-    SELECT m.id, m.activo, t.tipoMedicion
+    SELECT m.id, m.activo, m.instalacionId, t.tipoMedicion
     FROM medidores m
     JOIN tipos_medidor t ON m.tipoMedidorId = t.id
     WHERE m.id = ?
   `)
     .bind(medidorId)
-    .first<{ id: string; activo: number; tipoMedicion: string }>();
+    .first<{ id: string; activo: number; instalacionId: string; tipoMedicion: string }>();
 
   if (!medidor) {
     return c.json({ error: "NOT_FOUND", message: "Medidor no encontrado" }, 404);
+  }
+
+  const user = c.get("user");
+  if (user && user.rol !== "ADMIN") {
+    const allowed = user.allowedInstalacionIds || [];
+    if (!allowed.includes(medidor.instalacionId)) {
+      return c.json({ error: "FORBIDDEN", message: "Acceso denegado a este medidor" }, 403);
+    }
   }
 
   // 2. Si es acumulativo, verificar que el nuevo valor sea >= a la última lectura
@@ -113,7 +146,6 @@ lecturasRouter.post("/api/lecturas", async (c) => {
   }
 
   const lecturaId = crypto.randomUUID();
-  const user = c.get("user");
   const operadorId = user ? user.id : (body.operadorId || "usr-oper-01");
 
   await c.env.DB.prepare(`

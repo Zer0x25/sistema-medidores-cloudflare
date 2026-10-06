@@ -11,3 +11,8 @@ export function getPrisma(db: D1Database): PrismaClient {
   }
   return cachedPrisma;
 }
+
+export function sqlInList(ids: string[]): string {
+  if (ids.length === 0) return "NULL";
+  return ids.map((id) => `'${id.replace(/'/g, "''")}'`).join(", ");
+}

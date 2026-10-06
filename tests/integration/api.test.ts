@@ -342,4 +342,199 @@ describe("Integración HTTP en Cloudflare Workers (Hono App)", () => {
       expect(statementsRun.some((s) => s.includes("DELETE FROM asignaciones_operadores"))).toBe(true);
     });
   });
+
+  describe("Aislamiento Territorial y Location Scoping Multi-Sede (feat-021)", () => {
+    const supervisorUser: AuthUser = {
+      id: "usr-sup-1",
+      email: "supervisor@empresa.com",
+      nombre: "Supervisor Norte",
+      rol: "SUPERVISOR",
+    };
+    const supervisorToken = signJwt(supervisorUser, JWT_SECRET);
+
+    it("GET /api/instalaciones debe filtrar por instalaciones asignadas para SUPERVISOR", async () => {
+      let executedSql = "";
+      const prepareMock = vi.fn((sql: string) => {
+        executedSql = sql;
+        if (sql.includes("asignaciones_operadores WHERE usuarioId = ?")) {
+          return {
+            bind: vi.fn().mockReturnValue({
+              all: vi.fn().mockResolvedValue({ results: [{ instalacionId: "inst-01" }] }),
+            }),
+          };
+        }
+        return {
+          all: vi.fn().mockResolvedValue({
+            results: [{ id: "inst-01", nombre: "Planta Norte", ubicacion: "Sector 1", activa: 1 }],
+          }),
+        };
+      });
+
+      const env = createMockEnv({ DB: { prepare: prepareMock } as unknown as D1Database });
+      const res = await app.request(
+        "/api/instalaciones",
+        { method: "GET", headers: { Authorization: `Bearer ${supervisorToken}` } },
+        env
+      );
+
+      expect(res.status).toBe(200);
+      expect(executedSql).toContain("WHERE i.id IN ('inst-01')");
+    });
+
+    it("GET /api/instalaciones debe retornar [] inmediatamente si el usuario no tiene sedes asignadas", async () => {
+      const prepareMock = vi.fn((sql: string) => {
+        if (sql.includes("asignaciones_operadores WHERE usuarioId = ?")) {
+          return {
+            bind: vi.fn().mockReturnValue({
+              all: vi.fn().mockResolvedValue({ results: [] }),
+            }),
+          };
+        }
+        return {
+          all: vi.fn().mockResolvedValue({ results: [] }),
+        };
+      });
+
+      const env = createMockEnv({ DB: { prepare: prepareMock } as unknown as D1Database });
+      const res = await app.request(
+        "/api/instalaciones",
+        { method: "GET", headers: { Authorization: `Bearer ${supervisorToken}` } },
+        env
+      );
+
+      expect(res.status).toBe(200);
+      const json = await res.json();
+      expect(json).toEqual([]);
+    });
+
+    it("GET /api/medidores debe responder 403 si solicita instalacionId no asignada", async () => {
+      const prepareMock = vi.fn((sql: string) => {
+        if (sql.includes("asignaciones_operadores WHERE usuarioId = ?")) {
+          return {
+            bind: vi.fn().mockReturnValue({
+              all: vi.fn().mockResolvedValue({ results: [{ instalacionId: "inst-01" }] }),
+            }),
+          };
+        }
+        return { all: vi.fn().mockResolvedValue({ results: [] }) };
+      });
+
+      const env = createMockEnv({ DB: { prepare: prepareMock } as unknown as D1Database });
+      const res = await app.request(
+        "/api/medidores?instalacionId=inst-02",
+        { method: "GET", headers: { Authorization: `Bearer ${supervisorToken}` } },
+        env
+      );
+
+      expect(res.status).toBe(403);
+      const json = await res.json() as { error: string };
+      expect(json.error).toBe("FORBIDDEN");
+    });
+
+    it("GET /api/reportes/consumos debe responder 403 ante sede ajena", async () => {
+      const prepareMock = vi.fn((sql: string) => {
+        if (sql.includes("asignaciones_operadores WHERE usuarioId = ?")) {
+          return {
+            bind: vi.fn().mockReturnValue({
+              all: vi.fn().mockResolvedValue({ results: [{ instalacionId: "inst-01" }] }),
+            }),
+          };
+        }
+        return {
+          bind: vi.fn().mockReturnValue({
+            all: vi.fn().mockResolvedValue({ results: [] }),
+          }),
+        };
+      });
+
+      const env = createMockEnv({ DB: { prepare: prepareMock } as unknown as D1Database });
+      const res = await app.request(
+        "/api/reportes/consumos?instalacionId=inst-02",
+        { method: "GET", headers: { Authorization: `Bearer ${supervisorToken}` } },
+        env
+      );
+
+      expect(res.status).toBe(403);
+    });
+
+    it("POST /api/alertas/incidentes/:id/resolver debe rechazar con 403 si pertenece a sede ajena", async () => {
+      const prepareMock = vi.fn((sql: string) => {
+        if (sql.includes("asignaciones_operadores WHERE usuarioId = ?")) {
+          return {
+            bind: vi.fn().mockReturnValue({
+              all: vi.fn().mockResolvedValue({ results: [{ instalacionId: "inst-01" }] }),
+            }),
+          };
+        }
+        if (sql.includes("SELECT id, instalacionId FROM incidentes_alerta")) {
+          return {
+            bind: vi.fn().mockReturnValue({
+              first: vi.fn().mockResolvedValue({ id: "inc-1", instalacionId: "inst-02" }),
+            }),
+          };
+        }
+        return {
+          bind: vi.fn().mockReturnValue({
+            first: vi.fn().mockResolvedValue(null),
+            run: vi.fn().mockResolvedValue({ success: true }),
+          }),
+        };
+      });
+
+      const env = createMockEnv({ DB: { prepare: prepareMock } as unknown as D1Database });
+      const res = await app.request(
+        "/api/alertas/incidentes/inc-1/resolver",
+        {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${supervisorToken}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ notasResolucion: "Intento resolver sede ajena" }),
+        },
+        env
+      );
+
+      expect(res.status).toBe(403);
+    });
+
+    it("GET /api/mantenimiento/medidor/:id debe responder 403 ante medidor de sede ajena", async () => {
+      const prepareMock = vi.fn((sql: string) => {
+        if (sql.includes("asignaciones_operadores WHERE usuarioId = ?")) {
+          return {
+            bind: vi.fn().mockReturnValue({
+              all: vi.fn().mockResolvedValue({ results: [{ instalacionId: "inst-01" }] }),
+            }),
+          };
+        }
+        if (sql.includes("WHERE m.id = ?")) {
+          return {
+            bind: vi.fn().mockReturnValue({
+              first: vi.fn().mockResolvedValue({
+                id: "med-1",
+                codigo: "MED-01",
+                instalacionId: "inst-02", // Sede ajena
+                activo: 1,
+              }),
+            }),
+          };
+        }
+        return {
+          bind: vi.fn().mockReturnValue({
+            first: vi.fn().mockResolvedValue(null),
+            all: vi.fn().mockResolvedValue({ results: [] }),
+          }),
+        };
+      });
+
+      const env = createMockEnv({ DB: { prepare: prepareMock } as unknown as D1Database });
+      const res = await app.request(
+        "/api/mantenimiento/medidor/med-1",
+        { method: "GET", headers: { Authorization: `Bearer ${supervisorToken}` } },
+        env
+      );
+
+      expect(res.status).toBe(403);
+    });
+  });
 });

@@ -50,7 +50,15 @@ app.use("/api/*", async (c, next) => {
     const token = authHeader.slice(7).trim();
     try {
       const user = verifyJwt(token, c.env.JWT_SECRET);
-      c.set("user", user);
+      if (user.rol !== "ADMIN") {
+        const { results } = await c.env.DB.prepare(
+          "SELECT instalacionId FROM asignaciones_operadores WHERE usuarioId = ?"
+        ).bind(user.id).all<{ instalacionId: string }>();
+        const allowedInstalacionIds = (results || []).map((r) => r.instalacionId);
+        c.set("user", { ...user, allowedInstalacionIds });
+      } else {
+        c.set("user", { ...user, allowedInstalacionIds: undefined });
+      }
     } catch {
       if (!c.req.path.includes("/cambiar-password")) {
         return c.json({ error: "UNAUTHORIZED", message: "Token inválido o expirado" }, 401);
