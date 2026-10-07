@@ -8,8 +8,8 @@ Este archivo actúa como memoria persistente y tablero de control para humanos y
 
 - **Proyecto:** `sistema-medidores-cloudflare` (Cloudflare Workers + Hono + D1 + KV + Static Assets)
 - **Estado:** 100% autónomo, portable, probado y certificado tanto en entorno local (`wrangler dev`) como en producción (`https://metric.zer0x.org`).
-- **Dominio Edge:** `metric.zer0x.org` (Version ID: `5b64026d-1e00-404a-b798-3c06ebe5b685`)
-- **Última verificación de Quality Gate (`./scripts/verify.sh`):** Código de salida 0 (Typecheck 0 errores, ESLint 0 advertencias, Vitest 38/38 tests pasando). Migración `0003_ciclo_vida_factor_origen` aplicada en D1 local; smoke live en `wrangler dev :8787` (factor 20, OBIS 409, NIVEL 422, RECARGA 400/422, archivar 422, batch IMPORTADA, `test:contract` sin leaks).
+- **Dominio Edge:** `metric.zer0x.org` (Version ID: `ef83386e-2988-42bd-813c-958a6bb9d6e1`)
+- **Última verificación de Quality Gate (`./scripts/verify.sh`):** Código de salida 0 (Typecheck 0 errores, ESLint 0 advertencias, Vitest 38/38 tests pasando). Migración `0003_ciclo_vida_factor_origen` aplicada en D1 local y remota; despliegue `ef83386e` verificado en producción (`/healthz`, `/readyz`, `viewParque`, columnas `codigoExterno/factorInstalacion/valorBruto/origen` presentes).
 - **Herramienta CLI:** Actualizado a **Wrangler v4 (`^4.147.0`)** y `@cloudflare/workers-types` (`^5.20261006.1`) con soporte para tipos de runtime generados.
 - **Test de Simetría de Contrato (`npm run test:contract:remote`):** 100% pasando sin fugas (`undefined`, `null`, `NaN`, `Invalid Date`, `[object Object]`) verificado en producción tras despliegue con Wrangler v4.
 
