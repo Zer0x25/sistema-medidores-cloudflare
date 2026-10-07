@@ -333,7 +333,8 @@ instalacionesRouter.get("/api/instalaciones/:id/operadores", async (c) => {
 });
 
 // Listar instalaciones asignadas a un operador
-instalacionesRouter.get("/api/instalaciones/operador/:usuarioId", async (c) => {
+// Canónica upstream (ApiClient): /api/operadores/:usuarioId/instalaciones + legacy /api/instalaciones/operador/:usuarioId
+const handleInstalacionesDeOperador = async (c: AppContext) => {
   const usuarioId = c.req.param("usuarioId");
   const { results } = await c.env.DB.prepare(`
     SELECT i.id, i.codigo, i.nombre, i.ubicacion, i.activa
@@ -345,4 +346,7 @@ instalacionesRouter.get("/api/instalaciones/operador/:usuarioId", async (c) => {
     .all<{ id: string; codigo: string | null; nombre: string; ubicacion: string; activa: number }>();
 
   return c.json(results.map((r) => ({ ...r, direccion: r.ubicacion, activa: Boolean(r.activa) })));
-});
+};
+
+instalacionesRouter.get("/api/instalaciones/operador/:usuarioId", handleInstalacionesDeOperador);
+instalacionesRouter.get("/api/operadores/:usuarioId/instalaciones", handleInstalacionesDeOperador);

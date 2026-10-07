@@ -536,5 +536,36 @@ describe("Integración HTTP en Cloudflare Workers (Hono App)", () => {
 
       expect(res.status).toBe(403);
     });
+
+    it("GET /api/operadores/:usuarioId/instalaciones (canónica ApiClient) debe responder 200 con sedes activas", async () => {
+      const prepareMock = vi.fn((_sql: string) => ({
+        bind: vi.fn().mockReturnValue({
+          all: vi.fn().mockResolvedValue({
+            results: [{ id: "inst-01", codigo: "INS-01", nombre: "Planta Norte", ubicacion: "Sector 1", activa: 1 }],
+          }),
+        }),
+      }));
+
+      const adminUser: AuthUser = {
+        id: "usr-admin-1",
+        email: "admin@empresa.com",
+        nombre: "Admin",
+        rol: "ADMIN",
+      };
+      const adminToken = signJwt(adminUser, JWT_SECRET);
+      const env = createMockEnv({ DB: { prepare: prepareMock } as unknown as D1Database });
+      const res = await app.request(
+        "/api/operadores/usr-oper-01/instalaciones",
+        { method: "GET", headers: { Authorization: `Bearer ${adminToken}` } },
+        env
+      );
+
+      expect(res.status).toBe(200);
+      const json = await res.json() as Array<{ id: string; direccion: string; activa: boolean }>;
+      expect(json).toHaveLength(1);
+      expect(json[0].id).toBe("inst-01");
+      expect(json[0].direccion).toBe("Sector 1");
+      expect(json[0].activa).toBe(true);
+    });
   });
 });
