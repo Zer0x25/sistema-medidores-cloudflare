@@ -128,8 +128,8 @@
         </button>
       </nav>
 
-      <!-- Selector Rápido de Roles RBAC (ADR 0002 / Spec-005) -->
-      <div class="role-simulator-bar" id="roleSimulatorBar" aria-label="Simular usuario por rol">
+      <!-- Selector Rápido de Roles RBAC (ADR 0002 / Spec-005). Fail-closed: oculto por defecto, solo JS lo revela en dev (ADR 0012) -->
+      <div class="role-simulator-bar" id="roleSimulatorBar" aria-label="Simular usuario por rol" style="display: none;">
         <span class="simulator-label">Simular:</span>
         <button class="btn btn-sm btn-outline active" id="quickRoleAdmin" data-testid="quick-role-admin" onclick="loginComo('ADMIN')" title="Conectar como Administrador Global">
           👑 Admin
@@ -299,8 +299,8 @@
         </button>
       </nav>
 
-      <!-- Simulador de Roles para Móvil -->
-      <div class="mobile-simulator-section">
+      <!-- Simulador de Roles para Móvil. Fail-closed: oculto por defecto, solo JS lo revela en dev (ADR 0012) -->
+      <div class="mobile-simulator-section" style="display: none;">
         <span class="simulator-label">Simular Usuario (RBAC):</span>
         <div class="mobile-simulator-buttons">
           <button class="btn btn-sm btn-outline mobile-simulator-btn active" id="mobileRoleAdmin" data-testid="mobile-quick-role-admin" onclick="loginComo('ADMIN'); window.closeMobileMenu();">
