@@ -3,6 +3,7 @@ import { z } from "zod";
 import type { Env, Variables } from "../types.js";
 import { registrarAuditoria } from "../audit.js";
 import { sqlInList } from "../db.js";
+import { calcularPeriodoGracia } from "../domain.js";
 
 type AppContext = Context<{ Bindings: Env; Variables: Variables }>;
 
@@ -12,9 +13,20 @@ const CrearMedidorSchema = z.object({
   instalacionId: z.string().min(1),
   tipoMedidorId: z.string().min(1),
   codigo: z.string().min(2),
+  codigoExterno: z.string().trim().min(3).max(100).nullable().optional(),
+  factorInstalacion: z.number().positive().max(1000000).nullable().optional(),
   numeroSerie: z.string().optional(),
   ubicacionInterna: z.string().min(2),
   precintoActual: z.string().optional(),
+});
+
+const EditarMedidorSchema = z.object({
+  codigo: z.string().trim().min(3).max(50).optional(),
+  codigoExterno: z.string().trim().min(3).max(100).nullable().optional(),
+  factorInstalacion: z.number().positive().max(1000000).nullable().optional(),
+  numeroSerie: z.string().nullable().optional(),
+  ubicacionInterna: z.string().trim().min(2).max(200).optional(),
+  activo: z.boolean().optional(),
 });
 
 const CalibrarMedidorSchema = z.object({
@@ -38,10 +50,11 @@ const BajaTecnicaSchema = z.object({
   observaciones: z.string().optional(),
 });
 
-// 1. Listar medidores
+// 1. Listar medidores (con estado feat-022 + campos OBIS/factor feat-025)
 medidoresRouter.get("/api/medidores", async (c) => {
   const user = c.get("user");
   const activoQuery = c.req.query("activo");
+  const estado = c.req.query("estado") || "activos";
   const instalacionId = c.req.query("instalacionId");
 
   if (user && user.rol !== "ADMIN") {
@@ -55,11 +68,12 @@ medidoresRouter.get("/api/medidores", async (c) => {
   }
 
   let sql = `
-    SELECT 
-      m.id, m.codigo, m.numeroSerie, m.ubicacionInterna, m.activo, m.precintoActual,
+    SELECT
+      m.id, m.codigo, m.codigoExterno, m.factorInstalacion, m.numeroSerie, m.ubicacionInterna, m.activo, m.precintoActual,
       m.fechaUltimaCalibracion, m.fechaProximaCalibracion, m.createdAt,
       i.id as instalacionId, i.nombre as instalacionNombre,
       t.id as tipoMedidorId, t.nombre as tipoNombre, t.recurso, t.unidad, t.tipoMedicion,
+      t.multiplicador, t.capacidadMaxima,
       (SELECT valor FROM lecturas l WHERE l.medidorId = m.id ORDER BY l.fechaLectura DESC LIMIT 1) as ultimaLecturaValor,
       (SELECT fechaLectura FROM lecturas l WHERE l.medidorId = m.id ORDER BY l.fechaLectura DESC LIMIT 1) as ultimaLecturaFecha
     FROM medidores m
@@ -70,6 +84,10 @@ medidoresRouter.get("/api/medidores", async (c) => {
   const whereClauses: string[] = [];
   if (activoQuery !== undefined) {
     whereClauses.push(`m.activo = ${activoQuery === "true" ? 1 : 0}`);
+  } else if (estado === "activos") {
+    whereClauses.push("m.activo = 1");
+  } else if (estado === "archivados") {
+    whereClauses.push("m.activo = 0");
   }
   if (instalacionId) {
     whereClauses.push(`m.instalacionId = '${instalacionId.replace(/'/g, "''")}'`);
@@ -80,11 +98,13 @@ medidoresRouter.get("/api/medidores", async (c) => {
   if (whereClauses.length > 0) {
     sql += ` WHERE ${whereClauses.join(" AND ")}`;
   }
-  sql += " ORDER BY m.codigo ASC";
+  sql += " ORDER BY m.codigo ASC LIMIT 100";
 
   const { results } = await c.env.DB.prepare(sql).all<{
     id: string;
     codigo: string;
+    codigoExterno: string | null;
+    factorInstalacion: number | null;
     numeroSerie: string | null;
     ubicacionInterna: string;
     activo: number;
@@ -99,6 +119,8 @@ medidoresRouter.get("/api/medidores", async (c) => {
     recurso: string;
     unidad: string;
     tipoMedicion: string;
+    multiplicador: number | null;
+    capacidadMaxima: number | null;
     ultimaLecturaValor: number | null;
     ultimaLecturaFecha: string | null;
   }>();
@@ -109,13 +131,18 @@ medidoresRouter.get("/api/medidores", async (c) => {
     if (rawFecha && /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/.test(rawFecha)) {
       isoFecha = rawFecha.replace(" ", "T") + (rawFecha.includes("Z") ? "" : "Z");
     }
+    const { enPeriodoGracia, diasRestantesGracia } = calcularPeriodoGracia(row.createdAt);
 
     return {
       id: row.id,
       codigo: row.codigo,
+      codigoExterno: row.codigoExterno,
+      factorInstalacion: row.factorInstalacion,
       numeroSerie: row.numeroSerie,
       ubicacionInterna: row.ubicacionInterna,
       activo: Boolean(row.activo),
+      enPeriodoGracia,
+      diasRestantesGracia,
       precintoActual: row.precintoActual,
       fechaUltimaCalibracion: row.fechaUltimaCalibracion,
       fechaProximaCalibracion: row.fechaProximaCalibracion,
@@ -131,6 +158,8 @@ medidoresRouter.get("/api/medidores", async (c) => {
         unidad: row.unidad,
         unidadMedida: row.unidad,
         tipoMedicion: row.tipoMedicion,
+        multiplicador: row.multiplicador ?? 1,
+        capacidadMaxima: row.capacidadMaxima,
       },
       ultimaLectura: row.ultimaLecturaValor !== null ? {
         valor: row.ultimaLecturaValor,
@@ -144,7 +173,7 @@ medidoresRouter.get("/api/medidores", async (c) => {
   return c.json(formatted);
 });
 
-// 2. Crear medidor
+// 2. Crear medidor (con codigoExterno/factor feat-025)
 medidoresRouter.post("/api/medidores", async (c) => {
   const user = c.get("user");
   if (!user || (user.rol !== "ADMIN" && user.rol !== "SUPERVISOR")) {
@@ -159,6 +188,8 @@ medidoresRouter.post("/api/medidores", async (c) => {
 
   const id = crypto.randomUUID();
   const { instalacionId, tipoMedidorId, codigo, numeroSerie, ubicacionInterna, precintoActual } = parsed.data;
+  const codigoExterno = parsed.data.codigoExterno?.trim() || null;
+  const factorInstalacion = parsed.data.factorInstalacion ?? null;
 
   if (user.rol !== "ADMIN") {
     const allowed = user.allowedInstalacionIds || [];
@@ -168,11 +199,20 @@ medidoresRouter.post("/api/medidores", async (c) => {
   }
 
   try {
+    if (codigoExterno) {
+      const dupExt = await c.env.DB.prepare("SELECT id FROM medidores WHERE codigoExterno = ?").bind(codigoExterno).first();
+      if (dupExt) {
+        return c.json({
+          error: "MEDIDOR_CODIGO_EXTERNO_DUPLICADO",
+          message: `Ya existe un medidor con el código externo '${codigoExterno}'.`,
+        }, 409);
+      }
+    }
     await c.env.DB.prepare(`
-      INSERT INTO medidores (id, instalacionId, tipoMedidorId, codigo, numeroSerie, ubicacionInterna, precintoActual, activo, createdAt, updatedAt)
-      VALUES (?, ?, ?, ?, ?, ?, ?, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+      INSERT INTO medidores (id, instalacionId, tipoMedidorId, codigo, codigoExterno, factorInstalacion, numeroSerie, ubicacionInterna, precintoActual, activo, createdAt, updatedAt)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
     `)
-      .bind(id, instalacionId, tipoMedidorId, codigo, numeroSerie || null, ubicacionInterna, precintoActual || null)
+      .bind(id, instalacionId, tipoMedidorId, codigo, codigoExterno, factorInstalacion, numeroSerie || null, ubicacionInterna, precintoActual || null)
       .run();
 
     await registrarAuditoria({
@@ -181,10 +221,10 @@ medidoresRouter.post("/api/medidores", async (c) => {
       accion: "CREAR_MEDIDOR",
       entidad: "Medidor",
       entidadId: id,
-      detalles: { codigo, instalacionId },
+      detalles: { codigo, codigoExterno, factorInstalacion, instalacionId },
     });
 
-    return c.json({ id, codigo, instalacionId, tipoMedidorId, activo: true }, 201);
+    return c.json({ id, codigo, codigoExterno, factorInstalacion, instalacionId, tipoMedidorId, activo: true }, 201);
   } catch {
     return c.json({
       error: "MEDIDOR_CODIGO_DUPLICADO",
@@ -195,19 +235,23 @@ medidoresRouter.post("/api/medidores", async (c) => {
 
 const CrearTipoMedidorSchema = z.object({
   nombre: z.string().min(2),
-  recurso: z.enum(["AGUA", "LUZ", "GAS", "PETROLEO"]),
+  recurso: z.enum(["AGUA", "LUZ", "GAS", "PETROLEO", "OTRO"]),
   unidad: z.string().min(1),
-  tipoMedicion: z.enum(["ACUMULATIVO", "INTERVALO", "PULSOS", "NIVEL"]),
+  tipoMedicion: z.enum(["ACUMULATIVO", "INSTANTANEO", "NIVEL", "INTERVALO", "PULSOS"]),
+  multiplicador: z.number().positive().max(1000000).default(1),
+  capacidadMaxima: z.number().positive().max(100000000).nullable().optional(),
 });
 
 // 3. Tipos de medidores
 const fetchTipos = async (c: AppContext) => {
   const { results } = await c.env.DB.prepare(
-    "SELECT id, nombre, recurso, unidad, tipoMedicion, activo FROM tipos_medidor WHERE activo = 1 ORDER BY nombre ASC"
-  ).all<{ id: string; nombre: string; recurso: string; unidad: string; tipoMedicion: string; activo: number }>();
+    "SELECT id, nombre, recurso, unidad, tipoMedicion, multiplicador, capacidadMaxima, activo FROM tipos_medidor WHERE activo = 1 ORDER BY nombre ASC LIMIT 100"
+  ).all<{ id: string; nombre: string; recurso: string; unidad: string; tipoMedicion: string; multiplicador: number | null; capacidadMaxima: number | null; activo: number }>();
 
-  return c.json(results.map(r => ({
+  return c.json(results.map((r) => ({
     ...r,
+    multiplicador: r.multiplicador ?? 1,
+    capacidadMaxima: r.capacidadMaxima ?? null,
     unidadMedida: r.unidad,
     activo: Boolean(r.activo),
   })));
@@ -229,6 +273,8 @@ const handleCrearTipo = async (c: AppContext) => {
   }
 
   const { nombre, recurso, unidad, tipoMedicion } = parsed.data;
+  const multiplicador = parsed.data.multiplicador ?? 1;
+  const capacidadMaxima = parsed.data.capacidadMaxima ?? null;
   const existente = await c.env.DB.prepare("SELECT id FROM tipos_medidor WHERE nombre = ?").bind(nombre).first();
   if (existente) {
     return c.json({
@@ -239,9 +285,9 @@ const handleCrearTipo = async (c: AppContext) => {
 
   const id = crypto.randomUUID();
   await c.env.DB.prepare(`
-    INSERT INTO tipos_medidor (id, nombre, recurso, unidad, tipoMedicion, activo, createdAt, updatedAt)
-    VALUES (?, ?, ?, ?, ?, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-  `).bind(id, nombre, recurso, unidad, tipoMedicion).run();
+    INSERT INTO tipos_medidor (id, nombre, recurso, unidad, tipoMedicion, multiplicador, capacidadMaxima, activo, createdAt, updatedAt)
+    VALUES (?, ?, ?, ?, ?, ?, ?, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+  `).bind(id, nombre, recurso, unidad, tipoMedicion, multiplicador, capacidadMaxima).run();
 
   await registrarAuditoria({
     db: c.env.DB,
@@ -252,7 +298,7 @@ const handleCrearTipo = async (c: AppContext) => {
     detalles: parsed.data,
   });
 
-  return c.json({ id, nombre, recurso, unidad, unidadMedida: unidad, tipoMedicion, activo: true }, 201);
+  return c.json({ id, nombre, recurso, unidad, unidadMedida: unidad, tipoMedicion, multiplicador, capacidadMaxima, activo: true }, 201);
 };
 
 medidoresRouter.post("/api/tipos-medidor", handleCrearTipo);
@@ -263,11 +309,12 @@ medidoresRouter.get("/api/medidores/:id", async (c) => {
   const user = c.get("user");
   const id = c.req.param("id");
   const medidor = await c.env.DB.prepare(`
-    SELECT 
-      m.id, m.codigo, m.numeroSerie, m.ubicacionInterna, m.activo, m.precintoActual,
+    SELECT
+      m.id, m.codigo, m.codigoExterno, m.factorInstalacion, m.numeroSerie, m.ubicacionInterna, m.activo, m.precintoActual,
       m.fechaUltimaCalibracion, m.fechaProximaCalibracion, m.createdAt,
       i.id as instalacionId, i.nombre as instalacionNombre,
-      t.id as tipoMedidorId, t.nombre as tipoNombre, t.recurso, t.unidad, t.tipoMedicion
+      t.id as tipoMedidorId, t.nombre as tipoNombre, t.recurso, t.unidad, t.tipoMedicion,
+      t.multiplicador, t.capacidadMaxima
     FROM medidores m
     JOIN instalaciones i ON m.instalacionId = i.id
     JOIN tipos_medidor t ON m.tipoMedidorId = t.id
@@ -277,6 +324,8 @@ medidoresRouter.get("/api/medidores/:id", async (c) => {
     .first<{
       id: string;
       codigo: string;
+      codigoExterno: string | null;
+      factorInstalacion: number | null;
       numeroSerie: string | null;
       ubicacionInterna: string;
       activo: number;
@@ -291,6 +340,8 @@ medidoresRouter.get("/api/medidores/:id", async (c) => {
       recurso: string;
       unidad: string;
       tipoMedicion: string;
+      multiplicador: number | null;
+      capacidadMaxima: number | null;
     }>();
 
   if (!medidor) {
@@ -305,10 +356,10 @@ medidoresRouter.get("/api/medidores/:id", async (c) => {
   }
 
   const { results: lecturas } = await c.env.DB.prepare(
-    "SELECT id, valor, fechaLectura, notas FROM lecturas WHERE medidorId = ? ORDER BY fechaLectura DESC LIMIT 10"
+    "SELECT id, valor, valorBruto, multiplicadorAplicado, origen, fechaLectura, notas FROM lecturas WHERE medidorId = ? ORDER BY fechaLectura DESC LIMIT 10"
   )
     .bind(id)
-    .all<{ id: string; valor: number; fechaLectura: string; notas: string | null }>();
+    .all<{ id: string; valor: number; valorBruto: number | null; multiplicadorAplicado: number | null; origen: string | null; fechaLectura: string; notas: string | null }>();
 
   const mappedLecturas = lecturas.map((l) => {
     const raw = l.fechaLectura ? l.fechaLectura.trim() : "";
@@ -318,17 +369,122 @@ medidoresRouter.get("/api/medidores/:id", async (c) => {
     }
     return {
       ...l,
+      origen: l.origen || "MANUAL",
       fechaLectura: iso,
       timestamp: iso,
       fecha: iso,
     };
   });
 
+  const { enPeriodoGracia, diasRestantesGracia } = calcularPeriodoGracia(medidor.createdAt);
+
   return c.json({
     ...medidor,
     activo: Boolean(medidor.activo),
+    enPeriodoGracia,
+    diasRestantesGracia,
     lecturasRecientes: mappedLecturas,
   });
+});
+
+// 4b. Editar medidor (PATCH, ADMIN)
+medidoresRouter.patch("/api/medidores/:id", async (c) => {
+  const user = c.get("user");
+  if (!user || user.rol !== "ADMIN") return c.json({ error: "FORBIDDEN", message: "Solo administradores" }, 403);
+  const id = c.req.param("id");
+  const body = await c.req.json();
+  const parsed = EditarMedidorSchema.safeParse(body);
+  if (!parsed.success) return c.json({ error: "VALIDATION_ERROR", message: "Datos inválidos" }, 400);
+  const actual = await c.env.DB.prepare("SELECT * FROM medidores WHERE id = ?").bind(id).first<{
+    id: string; codigo: string; codigoExterno: string | null; factorInstalacion: number | null;
+    numeroSerie: string | null; ubicacionInterna: string; createdAt: string;
+  }>();
+  if (!actual) return c.json({ error: "NOT_FOUND", message: "Medidor no encontrado" }, 404);
+  const { enPeriodoGracia } = calcularPeriodoGracia(actual.createdAt);
+  if (parsed.data.codigo !== undefined && parsed.data.codigo !== actual.codigo) {
+    if (!enPeriodoGracia) {
+      return c.json({ error: "PERIODO_GRACIA_EXPIRADO", message: "El código se cristalizó tras 30 días." }, 422);
+    }
+    const dup = await c.env.DB.prepare("SELECT id FROM medidores WHERE codigo = ?").bind(parsed.data.codigo).first<{ id: string }>();
+    if (dup && dup.id !== id) return c.json({ error: "MEDIDOR_CODIGO_DUPLICADO", message: `Ya existe un medidor con el código '${parsed.data.codigo}'.` }, 409);
+  }
+  if (parsed.data.codigoExterno !== undefined && parsed.data.codigoExterno !== null) {
+    const ext = parsed.data.codigoExterno.trim();
+    if (ext !== (actual.codigoExterno || "")) {
+      const dupExt = await c.env.DB.prepare("SELECT id FROM medidores WHERE codigoExterno = ?").bind(ext).first<{ id: string }>();
+      if (dupExt && dupExt.id !== id) {
+        return c.json({ error: "MEDIDOR_CODIGO_EXTERNO_DUPLICADO", message: `Ya existe un medidor con el código externo '${ext}'.` }, 409);
+      }
+    }
+  }
+  const sets: string[] = ["updatedAt = CURRENT_TIMESTAMP"];
+  const vals: unknown[] = [];
+  if (parsed.data.codigo !== undefined) { sets.push("codigo = ?"); vals.push(parsed.data.codigo.trim()); }
+  if (parsed.data.codigoExterno !== undefined) { sets.push("codigoExterno = ?"); vals.push(parsed.data.codigoExterno === null ? null : parsed.data.codigoExterno.trim()); }
+  if (parsed.data.factorInstalacion !== undefined) { sets.push("factorInstalacion = ?"); vals.push(parsed.data.factorInstalacion); }
+  if (parsed.data.numeroSerie !== undefined) { sets.push("numeroSerie = ?"); vals.push(parsed.data.numeroSerie); }
+  if (parsed.data.ubicacionInterna !== undefined) { sets.push("ubicacionInterna = ?"); vals.push(parsed.data.ubicacionInterna.trim()); }
+  if (parsed.data.activo !== undefined) { sets.push("activo = ?"); vals.push(parsed.data.activo ? 1 : 0); }
+  await c.env.DB.prepare(`UPDATE medidores SET ${sets.join(", ")} WHERE id = ?`).bind(...vals, id).run();
+  await registrarAuditoria({
+    db: c.env.DB, usuario: user, accion: "MEDIDOR_EDITADO", entidad: "Medidor", entidadId: id,
+    detalles: { antes: { codigo: actual.codigo, codigoExterno: actual.codigoExterno, factorInstalacion: actual.factorInstalacion }, despues: parsed.data },
+  });
+  return c.json({ success: true, id });
+});
+
+// 4c. Archivar / restaurar / eliminar físico
+medidoresRouter.patch("/api/medidores/:id/archivar", async (c) => {
+  const user = c.get("user");
+  if (!user || user.rol !== "ADMIN") return c.json({ error: "FORBIDDEN", message: "Solo administradores" }, 403);
+  const id = c.req.param("id");
+  const actual = await c.env.DB.prepare("SELECT id, codigo FROM medidores WHERE id = ?").bind(id).first<{ id: string; codigo: string }>();
+  if (!actual) return c.json({ error: "NOT_FOUND", message: "Medidor no encontrado" }, 404);
+  await c.env.DB.prepare("UPDATE medidores SET activo = 0, updatedAt = CURRENT_TIMESTAMP WHERE id = ?").bind(id).run();
+  await registrarAuditoria({
+    db: c.env.DB, usuario: user, accion: "MEDIDOR_ARCHIVADO", entidad: "Medidor", entidadId: id,
+    detalles: { codigo: actual.codigo },
+  });
+  return c.json({ success: true, id, activo: false });
+});
+
+medidoresRouter.patch("/api/medidores/:id/restaurar", async (c) => {
+  const user = c.get("user");
+  if (!user || user.rol !== "ADMIN") return c.json({ error: "FORBIDDEN", message: "Solo administradores" }, 403);
+  const id = c.req.param("id");
+  const actual = await c.env.DB.prepare("SELECT id, codigo FROM medidores WHERE id = ?").bind(id).first<{ id: string; codigo: string }>();
+  if (!actual) return c.json({ error: "NOT_FOUND", message: "Medidor no encontrado" }, 404);
+  await c.env.DB.prepare("UPDATE medidores SET activo = 1, updatedAt = CURRENT_TIMESTAMP WHERE id = ?").bind(id).run();
+  await registrarAuditoria({
+    db: c.env.DB, usuario: user, accion: "MEDIDOR_RESTAURADO", entidad: "Medidor", entidadId: id,
+    detalles: { codigo: actual.codigo },
+  });
+  return c.json({ success: true, id, activo: true });
+});
+
+medidoresRouter.delete("/api/medidores/:id", async (c) => {
+  const user = c.get("user");
+  if (!user || user.rol !== "ADMIN") return c.json({ error: "FORBIDDEN", message: "Solo administradores" }, 403);
+  const id = c.req.param("id");
+  const actual = await c.env.DB.prepare("SELECT * FROM medidores WHERE id = ?").bind(id).first<{
+    id: string; codigo: string; codigoExterno: string | null; factorInstalacion: number | null;
+    numeroSerie: string | null; ubicacionInterna: string; instalacionId: string; createdAt: string;
+  }>();
+  if (!actual) return c.json({ error: "NOT_FOUND", message: "Medidor no encontrado" }, 404);
+  const { enPeriodoGracia } = calcularPeriodoGracia(actual.createdAt);
+  if (!enPeriodoGracia) {
+    return c.json({ error: "ELIMINACION_FISICA_PROHIBIDA", message: "Fuera de marcha blanca solo se permite archivar." }, 422);
+  }
+  const cnt = await c.env.DB.prepare("SELECT COUNT(*) as n FROM lecturas WHERE medidorId = ?").bind(id).first<{ n: number }>();
+  if ((cnt?.n || 0) > 0) {
+    return c.json({ error: "MEDIDOR_CON_LECTURAS_NO_ELIMINABLE", message: "El medidor tiene lecturas; archívelo en su lugar." }, 422);
+  }
+  await registrarAuditoria({
+    db: c.env.DB, usuario: user, accion: "MEDIDOR_ELIMINADO_GRACIA", entidad: "Medidor", entidadId: id,
+    detalles: { snapshot: actual },
+  });
+  await c.env.DB.prepare("DELETE FROM medidores WHERE id = ?").bind(id).run();
+  return c.json({ success: true, id });
 });
 
 // 5. Calibrar medidor
@@ -354,7 +510,7 @@ medidoresRouter.post("/api/medidores/:id/calibrar", async (c) => {
   const hoy = new Date().toISOString();
 
   await c.env.DB.prepare(`
-    UPDATE medidores 
+    UPDATE medidores
     SET fechaUltimaCalibracion = ?, fechaProximaCalibracion = ?, updatedAt = CURRENT_TIMESTAMP
     WHERE id = ?
   `)

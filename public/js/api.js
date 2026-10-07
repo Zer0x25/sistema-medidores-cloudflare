@@ -275,28 +275,65 @@ class ApiClient {
 
   // --- Dominio: Instalaciones ---
   instalaciones = {
-    getAll: () => this.request("/api/instalaciones"),
+    getAll: (estado = "activas") => this.request(`/api/instalaciones?estado=${encodeURIComponent(estado)}`),
+    getById: (id) => this.request(`/api/instalaciones/${encodeURIComponent(id)}`),
     create: (payload) =>
       this.request("/api/instalaciones", {
         method: "POST",
         body: JSON.stringify(payload),
       }),
-    getByOperador: (operadorId) => this.request(`/api/instalaciones/operador/${operadorId}`),
+    update: (id, payload) =>
+      this.request(`/api/instalaciones/${encodeURIComponent(id)}`, {
+        method: "PATCH",
+        body: JSON.stringify(payload),
+      }),
+    archivar: (id) =>
+      this.request(`/api/instalaciones/${encodeURIComponent(id)}/archivar`, {
+        method: "PATCH",
+      }),
+    restaurar: (id) =>
+      this.request(`/api/instalaciones/${encodeURIComponent(id)}/restaurar`, {
+        method: "PATCH",
+      }),
+    delete: (id) =>
+      this.request(`/api/instalaciones/${encodeURIComponent(id)}`, {
+        method: "DELETE",
+      }),
+    getByOperador: (operadorId) => this.request(`/api/operadores/${encodeURIComponent(operadorId)}/instalaciones`),
   };
 
   // --- Dominio: Medidores & Tipos ---
   medidores = {
+    getAll: (estado = "activos") => this.request(`/api/medidores?estado=${encodeURIComponent(estado)}`),
     getTipos: () => this.request("/api/tipos-medidor"),
     createTipo: (payload) =>
       this.request("/api/tipos-medidor", {
         method: "POST",
         body: JSON.stringify(payload),
       }),
-    getByInstalacion: (instalacionId) => this.request(`/api/medidores?instalacionId=${encodeURIComponent(instalacionId)}`),
+    getByInstalacion: (instalacionId, estado = "activos") =>
+      this.request(`/api/medidores?instalacionId=${encodeURIComponent(instalacionId)}&estado=${encodeURIComponent(estado)}`),
     create: (payload) =>
       this.request("/api/medidores", {
         method: "POST",
         body: JSON.stringify(payload),
+      }),
+    update: (id, payload) =>
+      this.request(`/api/medidores/${encodeURIComponent(id)}`, {
+        method: "PATCH",
+        body: JSON.stringify(payload),
+      }),
+    archivar: (id) =>
+      this.request(`/api/medidores/${encodeURIComponent(id)}/archivar`, {
+        method: "PATCH",
+      }),
+    restaurar: (id) =>
+      this.request(`/api/medidores/${encodeURIComponent(id)}/restaurar`, {
+        method: "PATCH",
+      }),
+    delete: (id) =>
+      this.request(`/api/medidores/${encodeURIComponent(id)}`, {
+        method: "DELETE",
       }),
   };
 

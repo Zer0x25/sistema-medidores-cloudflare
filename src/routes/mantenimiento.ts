@@ -3,12 +3,13 @@ import { z } from "zod";
 import type { Env, Variables } from "../types.js";
 import { registrarAuditoria } from "../audit.js";
 import { sqlInList } from "../db.js";
+import { validarRecarga } from "../domain.js";
 
 export const mantenimientoRouter = new Hono<{ Bindings: Env; Variables: Variables }>();
 
 const RegistroMantenimientoSchema = z.object({
   medidorId: z.string().min(1),
-  tipo: z.enum(["CALIBRACION", "CAMBIO_PRECINTO", "REEMPLAZO_EQUIPO", "INSPECCION", "BAJA_TECNICA"]),
+  tipo: z.enum(["CALIBRACION", "CAMBIO_PRECINTO", "REEMPLAZO_EQUIPO", "INSPECCION", "BAJA_TECNICA", "RECARGA_TANQUE"]),
   tecnicoResponsable: z.string().min(2),
   numeroPrecintoAnterior: z.string().optional(),
   numeroPrecintoNuevo: z.string().optional(),
@@ -17,6 +18,8 @@ const RegistroMantenimientoSchema = z.object({
   lecturaRetiro: z.number().optional(),
   motivoBaja: z.string().optional(),
   nuevoMedidorCodigo: z.string().optional(),
+  volumenRecargado: z.number().positive().nullable().optional(),
+  nivelPosterior: z.number().nonnegative().nullable().optional(),
   observaciones: z.string().optional(),
 });
 
@@ -33,7 +36,7 @@ mantenimientoRouter.get("/api/mantenimiento", async (c) => {
   }
 
   const { results } = await c.env.DB.prepare(`
-    SELECT 
+    SELECT
       rm.*,
       m.codigo as medidorCodigo,
       i.nombre as instalacionNombre
@@ -53,7 +56,7 @@ mantenimientoRouter.get("/api/mantenimiento/medidor/:medidorId", async (c) => {
   const medidorId = c.req.param("medidorId");
 
   const medidor = await c.env.DB.prepare(`
-    SELECT 
+    SELECT
       m.id, m.codigo, m.numeroSerie, m.ubicacionInterna, m.activo, m.precintoActual,
       m.fechaUltimaCalibracion, m.fechaProximaCalibracion, m.createdAt,
       i.id as instalacionId, i.nombre as instalacionNombre,
@@ -95,7 +98,7 @@ mantenimientoRouter.get("/api/mantenimiento/medidor/:medidorId", async (c) => {
   }
 
   const { results: historial } = await c.env.DB.prepare(`
-    SELECT 
+    SELECT
       rm.*,
       m.codigo as medidorCodigo,
       i.nombre as instalacionNombre
@@ -113,7 +116,7 @@ mantenimientoRouter.get("/api/mantenimiento/medidor/:medidorId", async (c) => {
   });
 });
 
-// Registrar mantenimiento directo
+// Registrar mantenimiento directo (con RECARGA_TANQUE feat-024)
 mantenimientoRouter.post("/api/mantenimiento", async (c) => {
   const user = c.get("user");
   const body = await c.req.json();
@@ -123,7 +126,11 @@ mantenimientoRouter.post("/api/mantenimiento", async (c) => {
   const id = crypto.randomUUID();
   const data = parsed.data;
 
-  const medidor = await c.env.DB.prepare("SELECT id, instalacionId FROM medidores WHERE id = ?").bind(data.medidorId).first<{ id: string; instalacionId: string }>();
+  const medidor = await c.env.DB.prepare(`
+    SELECT m.id, m.instalacionId, t.tipoMedicion
+    FROM medidores m JOIN tipos_medidor t ON m.tipoMedidorId = t.id
+    WHERE m.id = ?
+  `).bind(data.medidorId).first<{ id: string; instalacionId: string; tipoMedicion: string }>();
   if (!medidor) {
     return c.json({ error: "NOT_FOUND", message: "Medidor no encontrado" }, 404);
   }
@@ -132,6 +139,21 @@ mantenimientoRouter.post("/api/mantenimiento", async (c) => {
     const allowed = user.allowedInstalacionIds || [];
     if (!allowed.includes(medidor.instalacionId)) {
       return c.json({ error: "FORBIDDEN", message: "Acceso denegado a este medidor" }, 403);
+    }
+  }
+
+  if (data.tipo === "RECARGA_TANQUE") {
+    try {
+      validarRecarga(medidor.tipoMedicion, data.volumenRecargado, data.nivelPosterior);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (msg.includes("RECARGA_SOLO_NIVEL")) {
+        return c.json({ error: "RECARGA_SOLO_NIVEL", message: msg }, 422);
+      }
+      if (msg.includes("VOLUMEN_RECARGA_REQUERIDO")) {
+        return c.json({ error: "VOLUMEN_RECARGA_REQUERIDO", message: msg }, 400);
+      }
+      return c.json({ error: "NIVEL_POSTERIOR_REQUERIDO", message: msg }, 400);
     }
   }
 
@@ -154,16 +176,18 @@ mantenimientoRouter.post("/api/mantenimiento", async (c) => {
     INSERT INTO registros_mantenimiento (
       id, medidorId, tipo, tecnicoResponsable, numeroPrecintoAnterior, numeroPrecintoNuevo,
       proximaCalibracion, certificadoCalibracion, lecturaRetiro, motivoBaja,
-      nuevoMedidorCodigo, observaciones, fechaMantenimiento, createdAt
+      nuevoMedidorCodigo, volumenRecargado, nivelPosterior, observaciones, fechaMantenimiento, createdAt
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
   `)
     .bind(
       id, data.medidorId, data.tipo, data.tecnicoResponsable,
       data.numeroPrecintoAnterior || null, data.numeroPrecintoNuevo || null,
       data.proximaCalibracion || null, data.certificadoCalibracion || null,
       data.lecturaRetiro || null, data.motivoBaja || null,
-      data.nuevoMedidorCodigo || null, data.observaciones || null
+      data.nuevoMedidorCodigo || null,
+      data.volumenRecargado ?? null, data.nivelPosterior ?? null,
+      data.observaciones || null
     )
     .run();
 

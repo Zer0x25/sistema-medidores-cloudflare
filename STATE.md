@@ -9,7 +9,7 @@ Este archivo actúa como memoria persistente y tablero de control para humanos y
 - **Proyecto:** `sistema-medidores-cloudflare` (Cloudflare Workers + Hono + D1 + KV + Static Assets)
 - **Estado:** 100% autónomo, portable, probado y certificado tanto en entorno local (`wrangler dev`) como en producción (`https://metric.zer0x.org`).
 - **Dominio Edge:** `metric.zer0x.org` (Version ID: `5b64026d-1e00-404a-b798-3c06ebe5b685`)
-- **Última verificación de Quality Gate (`./scripts/verify.sh`):** Código de salida 0 (Typecheck 0 errores, ESLint 0 advertencias, Vitest 33/33 tests pasando en 0.6s).
+- **Última verificación de Quality Gate (`./scripts/verify.sh`):** Código de salida 0 (Typecheck 0 errores, ESLint 0 advertencias, Vitest 38/38 tests pasando). Migración `0003_ciclo_vida_factor_origen` aplicada en D1 local; smoke live en `wrangler dev :8787` (factor 20, OBIS 409, NIVEL 422, RECARGA 400/422, archivar 422, batch IMPORTADA, `test:contract` sin leaks).
 - **Herramienta CLI:** Actualizado a **Wrangler v4 (`^4.147.0`)** y `@cloudflare/workers-types` (`^5.20261006.1`) con soporte para tipos de runtime generados.
 - **Test de Simetría de Contrato (`npm run test:contract:remote`):** 100% pasando sin fugas (`undefined`, `null`, `NaN`, `Invalid Date`, `[object Object]`) verificado en producción tras despliegue con Wrangler v4.
 
@@ -54,6 +54,10 @@ Este registro almacena los hitos o funcionalidades cerradas en el repo padre que
 - [x] **Hito 1 a 15 (Núcleo y Simetría):** Portado al 100% y certificado en producción (`metric.zer0x.org`).
 - [x] **Hito 15.3 (Explorabilidad DOM & Routing):** Sincronizado (`/#/[modulo]`, `data-state`, `window.__DIAGNOSTICS__`, `dataset.appReady`).
 - [x] **Hito 15.4 / feat-021 (Aislamiento Territorial RBAC Multi-Sede):** Sincronizado en Edge (`allowedInstalacionIds` en D1 SQL y 403 fail-closed en todas las rutas).
+- [x] **Hito 15.4b / feat-022 (Ciclo de Vida Metrológico 30d):** Sincronizado (2026-10-07). Migración `0003` (`instalaciones.codigo`, índices únicos); `PATCH /:id`, `PATCH /:id/archivar|restaurar`, `DELETE` con gracia + conteos + auditoría (`INSTALACION_*/MEDIDOR_*`); filtro `?estado=`; `MEDIDOR_INACTIVO` 422 en lecturas.
+- [x] **Hito 15.5 / feat-023 (Módulo Parque):** Sincronizado (2026-10-07). Frontend `public/` alineado a upstream (`viewParque #/parque`, `nav-parque`, `seccionGestionParque`, modales edición, `ApiClient` archivar/restaurar/eliminar).
+- [x] **Hito 15.6 / feat-024 (Tipos con Factor + Recargas):** Sincronizado (2026-10-07). `tipos_medidor.multiplicador/capacidadMaxima`, `lecturas.valorBruto/multiplicadorAplicado`, `RECARGA_TANQUE` + `volumenRecargado/nivelPosterior` (400/422 tipados), consumos por modo en dashboard/reportes, alertas SALTO/FUGA solo ACUMULATIVO, seed diésel 5000 L.
+- [x] **Hito 15.7 / feat-025 (OBIS/Origen/Factor por Activo):** Sincronizado (2026-10-07). `medidores.codigoExterno` único (409) + `factorInstalacion` override (efectivo = instalación ?? tipo ?? 1), `lecturas.origen` MANUAL/AJUSTE/IMPORTADA propagado en batch-sync.
 - [ ] *(Pendiente)*: Cuando se completen nuevos hitos en el repo padre (ej: Hito 16), anótalos aquí con sus rutas, tablas e invariantes antes de iniciar la sesión de migración.
 
 ---

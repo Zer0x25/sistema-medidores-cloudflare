@@ -418,6 +418,89 @@ function renderErrorState(container, message, onRetryCallback) {
   }
 }
 
+/**
+ * Fila para la tabla de gestión de Instalaciones (ADMIN)
+ */
+function createInstalacionRow(inst) {
+  const codigo = inst.codigo || "—";
+  const activaBadge = inst.activa
+    ? '<span class="badge badge-emerald">Activa</span>'
+    : '<span class="badge badge-amber">Archivada</span>';
+
+  const graciaBadge = inst.enPeriodoGracia
+    ? `<span class="badge badge-blue" title="Editable / Borrable">⚡ ${inst.diasRestantesGracia ?? 30}d gracia</span>`
+    : `<span class="badge badge-muted" title="Código inmutable">🔒 Cristalizado</span>`;
+
+  return `
+    <tr data-instalacion-id="${inst.id}">
+      <td><span class="badge font-mono badge-blue">${escapeHtml(codigo)}</span></td>
+      <td><strong>${escapeHtml(inst.nombre)}</strong></td>
+      <td>${escapeHtml(inst.ubicacion || inst.direccion || "—")}</td>
+      <td>${activaBadge}</td>
+      <td>${graciaBadge}</td>
+      <td style="text-align: right; white-space: nowrap;">
+        <button class="btn btn-xs btn-outline" onclick="abrirModalEditarInstalacion('${inst.id}')" title="Editar instalación">
+          ✏️ Editar
+        </button>
+        ${
+          inst.activa
+            ? `<button class="btn btn-xs btn-outline text-amber" onclick="archivarInstalacion('${inst.id}')" title="Archivar sede (Soft Delete)">📦 Archivar</button>`
+            : `<button class="btn btn-xs btn-outline text-emerald" onclick="restaurarInstalacion('${inst.id}')" title="Restaurar sede">♻️ Restaurar</button>`
+        }
+        ${
+          inst.enPeriodoGracia
+            ? `<button class="btn btn-xs btn-danger" onclick="eliminarInstalacionFisica('${inst.id}')" title="Eliminar definitivamente (Marcha blanca)">🗑️ Eliminar</button>`
+            : ""
+        }
+      </td>
+    </tr>
+  `;
+}
+
+/**
+ * Fila para la tabla de gestión de Medidores (ADMIN)
+ */
+function createMedidorRow(medidor) {
+  const tipo = medidor.tipoMedidor || {};
+  const meta = getResourceMeta(tipo.recurso);
+  const activoBadge = medidor.activo
+    ? '<span class="badge badge-emerald">Activo</span>'
+    : '<span class="badge badge-amber">Archivado</span>';
+
+  const graciaBadge = medidor.enPeriodoGracia
+    ? `<span class="badge badge-blue" title="Editable / Borrable">⚡ ${medidor.diasRestantesGracia ?? 30}d gracia</span>`
+    : `<span class="badge badge-muted" title="Código inmutable">🔒 Cristalizado</span>`;
+
+  const sedeNombre = medidor.instalacion?.nombre || "—";
+
+  return `
+    <tr data-medidor-id="${medidor.id}">
+      <td><span class="badge font-mono ${meta.badgeClass}">${escapeHtml(medidor.codigo)}</span></td>
+      <td>${escapeHtml(sedeNombre)}</td>
+      <td>${meta.icon} ${escapeHtml(tipo.nombre || tipo.recurso || "—")}</td>
+      <td>${escapeHtml(medidor.ubicacionInterna || "—")}</td>
+      <td><span class="font-mono text-muted">${escapeHtml(medidor.numeroSerie || "—")}</span></td>
+      <td>${activoBadge}</td>
+      <td>${graciaBadge}</td>
+      <td style="text-align: right; white-space: nowrap;">
+        <button class="btn btn-xs btn-outline" onclick="abrirModalEditarMedidor('${medidor.id}')" title="Editar medidor">
+          ✏️ Editar
+        </button>
+        ${
+          medidor.activo
+            ? `<button class="btn btn-xs btn-outline text-amber" onclick="archivarMedidor('${medidor.id}')" title="Archivar medidor (Soft Delete)">📦 Archivar</button>`
+            : `<button class="btn btn-xs btn-outline text-emerald" onclick="restaurarMedidor('${medidor.id}')" title="Restaurar medidor">♻️ Restaurar</button>`
+        }
+        ${
+          medidor.enPeriodoGracia
+            ? `<button class="btn btn-xs btn-danger" onclick="eliminarMedidorFisico('${medidor.id}')" title="Eliminar definitivamente (Marcha blanca)">🗑️ Eliminar</button>`
+            : ""
+        }
+      </td>
+    </tr>
+  `;
+}
+
 // Exportar funciones a la ventana global
 window.Components = {
   parseDate,
@@ -430,6 +513,8 @@ window.Components = {
   createActivityItem,
   createErrorState,
   renderErrorState,
+  createInstalacionRow,
+  createMedidorRow,
 };
 
 // ------------------------------------------------------------------------------

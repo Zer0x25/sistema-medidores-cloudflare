@@ -210,15 +210,15 @@ alertasRouter.post("/api/alertas/evaluar", async (c) => {
     "SELECT id, nombre, tipo, recurso, umbralValor FROM reglas_alerta WHERE activa = 1"
   ).all<{ id: string; nombre: string; tipo: string; recurso: string | null; umbralValor: number }>();
 
-  // 2. Obtener medidores activos
+  // 2. Obtener medidores activos (con tipoMedicion para feat-024: SALTO/FUGA solo ACUMULATIVO)
   const { results: medidores } = await c.env.DB.prepare(`
-    SELECT 
-      m.id, m.codigo, m.instalacionId, i.nombre as instalacionNombre, tm.recurso, m.activo
+    SELECT
+      m.id, m.codigo, m.instalacionId, i.nombre as instalacionNombre, tm.recurso, tm.tipoMedicion, m.activo
     FROM medidores m
     JOIN instalaciones i ON m.instalacionId = i.id
     JOIN tipos_medidor tm ON m.tipoMedidorId = tm.id
     WHERE m.activo = 1
-  `).all<{ id: string; codigo: string; instalacionId: string; instalacionNombre: string; recurso: string; activo: number }>();
+  `).all<{ id: string; codigo: string; instalacionId: string; instalacionNombre: string; recurso: string; tipoMedicion: string; activo: number }>();
 
   // 3. Obtener incidentes abiertos existentes para evitar duplicados
   const { results: incidentesAbiertos } = await c.env.DB.prepare(
@@ -290,6 +290,9 @@ alertasRouter.post("/api/alertas/evaluar", async (c) => {
       }
 
       if (regla.tipo === "SALTO_CONSUMO" && lecturas.length >= 3) {
+        if (medidor.tipoMedicion && medidor.tipoMedicion !== "ACUMULATIVO") {
+          continue;
+        }
         const deltas: number[] = [];
         for (let i = 1; i < lecturas.length; i++) {
           deltas.push(lecturas[i].valor - lecturas[i - 1].valor);
@@ -333,6 +336,9 @@ alertasRouter.post("/api/alertas/evaluar", async (c) => {
       }
 
       if (regla.tipo === "FUGA_PROBABLE" && lecturas.length >= 3) {
+        if (medidor.tipoMedicion && medidor.tipoMedicion !== "ACUMULATIVO") {
+          continue;
+        }
         const ultimas = lecturas.slice(-Math.max(3, regla.umbralValor));
         let esFuga = true;
         for (let i = 1; i < ultimas.length; i++) {

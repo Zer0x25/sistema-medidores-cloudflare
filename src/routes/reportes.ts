@@ -3,8 +3,41 @@ import { z } from "zod";
 import type { Env, Variables } from "../types.js";
 import { registrarAuditoria } from "../audit.js";
 import { sqlInList } from "../db.js";
+import type { D1Database } from "@cloudflare/workers-types";
 
 export const reportesRouter = new Hono<{ Bindings: Env; Variables: Variables }>();
+
+async function consumoMedidoPorModo(
+  db: D1Database,
+  instalacionId: string,
+  recurso: string,
+  inicio: string,
+  fin: string
+): Promise<number> {
+  const { results: meds } = await db.prepare(
+    "SELECT m.id, t.tipoMedicion FROM medidores m JOIN tipos_medidor t ON m.tipoMedidorId = t.id WHERE m.instalacionId = ? AND t.recurso = ? AND m.activo = 1"
+  ).bind(instalacionId, recurso).all<{ id: string; tipoMedicion: string }>();
+  let total = 0;
+  for (const m of meds) {
+    const { results: lecs } = await db.prepare(
+      "SELECT valor FROM lecturas WHERE medidorId = ? AND fechaLectura >= ? AND fechaLectura <= ? ORDER BY fechaLectura ASC LIMIT 500"
+    ).bind(m.id, inicio, fin).all<{ valor: number }>();
+    if (lecs.length === 0) continue;
+    if (m.tipoMedicion === "ACUMULATIVO") {
+      if (lecs.length >= 2) total += Math.max(0, lecs[lecs.length - 1].valor - lecs[0].valor);
+    } else if (m.tipoMedicion === "NIVEL") {
+      const bajada = Math.max(0, Number((lecs[0].valor - lecs[lecs.length - 1].valor).toFixed(2)));
+      const rec = await db.prepare(
+        "SELECT COALESCE(SUM(volumenRecargado),0) as t FROM registros_mantenimiento WHERE medidorId = ? AND tipo = 'RECARGA_TANQUE' AND fechaMantenimiento >= ? AND fechaMantenimiento <= ?"
+      ).bind(m.id, inicio, fin).first<{ t: number }>().catch(() => ({ t: 0 }));
+      total += bajada + (rec?.t || 0);
+    } else {
+      const suma = lecs.reduce((a, l) => a + l.valor, 0);
+      total += suma / lecs.length;
+    }
+  }
+  return Number(total.toFixed(2));
+}
 
 const FacturaSchema = z.object({
   instalacionId: z.string().min(1),
@@ -18,7 +51,7 @@ const FacturaSchema = z.object({
   notas: z.string().optional(),
 });
 
-// Consumo agregado por instalación y recurso
+// Consumo agregado por instalación y recurso (feat-024 por modo)
 reportesRouter.get("/api/reportes/consumo-instalacion", async (c) => {
   const user = c.get("user");
   let whereClause = "";
@@ -30,25 +63,51 @@ reportesRouter.get("/api/reportes/consumo-instalacion", async (c) => {
     whereClause = `WHERE i.id IN (${sqlInList(allowed)})`;
   }
 
-  const { results } = await c.env.DB.prepare(`
-    SELECT 
-      i.id as instalacionId,
-      i.nombre as instalacionNombre,
-      t.recurso,
-      t.unidad,
-      COUNT(DISTINCT m.id) as medidoresCount,
-      COUNT(l.id) as lecturasCount,
-      COALESCE(MAX(l.valor) - MIN(l.valor), 0) as consumoNetoEstimado
+  const { results: meds } = await c.env.DB.prepare(`
+    SELECT i.id as instalacionId, i.nombre as instalacionNombre, t.recurso, t.unidad,
+      m.id as medidorId, t.tipoMedicion
     FROM instalaciones i
-    JOIN medidores m ON m.instalacionId = i.id
+    JOIN medidores m ON m.instalacionId = i.id AND m.activo = 1
     JOIN tipos_medidor t ON m.tipoMedidorId = t.id
-    LEFT JOIN lecturas l ON l.medidorId = m.id
     ${whereClause}
-    GROUP BY i.id, t.recurso
-    ORDER BY i.nombre, t.recurso
-  `).all();
+    ORDER BY i.nombre, t.recurso LIMIT 500
+  `).all<{ instalacionId: string; instalacionNombre: string; recurso: string; unidad: string; medidorId: string; tipoMedicion: string }>();
 
-  return c.json(results);
+  const { results: stats } = await c.env.DB.prepare(
+    "SELECT medidorId, MIN(valor) as minV, MAX(valor) as maxV, AVG(valor) as avgV, COUNT(id) as n FROM lecturas GROUP BY medidorId"
+  ).all<{ medidorId: string; minV: number | null; maxV: number | null; avgV: number | null; n: number }>();
+  const statMap = new Map(stats.map((s) => [s.medidorId, s]));
+  const { results: recs } = await c.env.DB.prepare(
+    "SELECT medidorId, COALESCE(SUM(volumenRecargado),0) as t FROM registros_mantenimiento WHERE tipo = 'RECARGA_TANQUE' GROUP BY medidorId"
+  ).all<{ medidorId: string; t: number }>().catch(() => ({ results: [] as Array<{ medidorId: string; t: number }> }));
+  const recMap = new Map((recs || []).map((r) => [r.medidorId, r.t || 0]));
+
+  const grupos = new Map<string, { instalacionId: string; instalacionNombre: string; recurso: string; unidad: string; medidoresCount: number; lecturasCount: number; consumoNetoEstimado: number }>();
+  for (const m of meds) {
+    const key = `${m.instalacionId}:${m.recurso}`;
+    if (!grupos.has(key)) {
+      grupos.set(key, { instalacionId: m.instalacionId, instalacionNombre: m.instalacionNombre, recurso: m.recurso, unidad: m.unidad, medidoresCount: 0, lecturasCount: 0, consumoNetoEstimado: 0 });
+    }
+    const g = grupos.get(key);
+    if (!g) continue;
+    g.medidoresCount += 1;
+    const st = statMap.get(m.medidorId);
+    if (!st) continue;
+    g.lecturasCount += st.n || 0;
+    if (m.tipoMedicion === "ACUMULATIVO") {
+      if ((st.n || 0) >= 2 && st.minV !== null && st.maxV !== null) g.consumoNetoEstimado += Math.max(0, st.maxV - st.minV);
+    } else if (m.tipoMedicion === "NIVEL") {
+      const { results: ord } = await c.env.DB.prepare(
+        "SELECT valor FROM lecturas WHERE medidorId = ? ORDER BY fechaLectura ASC LIMIT 200"
+      ).bind(m.medidorId).all<{ valor: number }>();
+      if (ord.length >= 1) {
+        g.consumoNetoEstimado += Math.max(0, Number((ord[0].valor - ord[ord.length - 1].valor).toFixed(2))) + (recMap.get(m.medidorId) || 0);
+      }
+    } else if (st.avgV !== null) {
+      g.consumoNetoEstimado += Number(st.avgV.toFixed(2));
+    }
+  }
+  return c.json([...grupos.values()].map((g) => ({ ...g, consumoNetoEstimado: Number(g.consumoNetoEstimado.toFixed(2)) })));
 });
 
 // Registrar factura de servicio y conciliar inmediatamente
@@ -75,19 +134,8 @@ reportesRouter.post("/api/reportes/facturas", async (c) => {
   const inst = await c.env.DB.prepare("SELECT id FROM instalaciones WHERE id = ?").bind(data.instalacionId).first();
   if (!inst) return c.json({ error: "NOT_FOUND", message: "Instalación no encontrada" }, 404);
 
-  // Calcular consumo medido por medidores de esa instalación y recurso en el período
-  const medicion = await c.env.DB.prepare(`
-    SELECT COALESCE(MAX(l.valor) - MIN(l.valor), 0) as consumoMedido
-    FROM lecturas l
-    JOIN medidores m ON l.medidorId = m.id
-    JOIN tipos_medidor t ON m.tipoMedidorId = t.id
-    WHERE m.instalacionId = ? AND t.recurso = ?
-      AND l.fechaLectura >= ? AND l.fechaLectura <= ?
-  `)
-    .bind(data.instalacionId, data.recurso, data.periodoInicio, data.periodoFin)
-    .first<{ consumoMedido: number }>();
-
-  const consumoMedido = medicion?.consumoMedido || 0;
+  // Calcular consumo medido por modo (feat-024) en el período
+  const consumoMedido = await consumoMedidoPorModo(c.env.DB, data.instalacionId, data.recurso, data.periodoInicio, data.periodoFin);
   const diferencia = data.consumoFacturado - consumoMedido;
   const porcentajeDesvio = consumoMedido > 0 ? (diferencia / consumoMedido) * 100 : 0;
   const estado = (consumoMedido > 0 && Math.abs(porcentajeDesvio) <= 5.0) ? "CONCILIADO" : "DISCREPANCIA";
@@ -171,19 +219,8 @@ reportesRouter.post("/api/reportes/conciliar/:id", async (c) => {
     }
   }
 
-  // Calcular consumo medido por medidores de esa instalación y recurso en el período
-  const medicion = await c.env.DB.prepare(`
-    SELECT COALESCE(MAX(l.valor) - MIN(l.valor), 0) as consumoMedido
-    FROM lecturas l
-    JOIN medidores m ON l.medidorId = m.id
-    JOIN tipos_medidor t ON m.tipoMedidorId = t.id
-    WHERE m.instalacionId = ? AND t.recurso = ?
-      AND l.fechaLectura >= ? AND l.fechaLectura <= ?
-  `)
-    .bind(factura.instalacionId, factura.recurso, factura.periodoInicio, factura.periodoFin)
-    .first<{ consumoMedido: number }>();
-
-  const consumoMedido = medicion?.consumoMedido || 0;
+  // Calcular consumo medido por modo (feat-024) en el período
+  const consumoMedido = await consumoMedidoPorModo(c.env.DB, factura.instalacionId, factura.recurso, factura.periodoInicio, factura.periodoFin);
   const diferencia = factura.consumoFacturado - consumoMedido;
   const porcentajeDesvio = consumoMedido > 0 ? (diferencia / consumoMedido) * 100 : 0;
   const estado = Math.abs(porcentajeDesvio) <= 5 ? "CONCILIADO" : "DISCREPANCIA";
@@ -215,7 +252,7 @@ reportesRouter.post("/api/reportes/conciliar/:id", async (c) => {
   });
 });
 
-// Consumos detallados por medidor
+// Consumos detallados por medidor (feat-024 por modo)
 reportesRouter.get("/api/reportes/consumos", async (c) => {
   const user = c.get("user");
   const instalacionId = c.req.query("instalacionId");
@@ -234,56 +271,77 @@ reportesRouter.get("/api/reportes/consumos", async (c) => {
     }
   }
 
-  const conditions: string[] = [];
-  const params: unknown[] = [];
-
-  if (instalacionId) {
-    conditions.push("m.instalacionId = ?");
-    params.push(instalacionId);
-  } else if (user && user.rol !== "ADMIN") {
+  const medConds: string[] = [];
+  const medParams: unknown[] = [];
+  if (instalacionId) { medConds.push("m.instalacionId = ?"); medParams.push(instalacionId); }
+  else if (user && user.rol !== "ADMIN") {
     const allowed = user.allowedInstalacionIds || [];
-    conditions.push(`m.instalacionId IN (${sqlInList(allowed)})`);
+    medConds.push(`m.instalacionId IN (${sqlInList(allowed)})`);
   }
-  if (medidorId) {
-    conditions.push("m.id = ?");
-    params.push(medidorId);
-  }
-  if (recurso) {
-    conditions.push("t.recurso = ?");
-    params.push(recurso);
-  }
-  if (fechaInicio) {
-    conditions.push("l.fechaLectura >= ?");
-    params.push(fechaInicio);
-  }
-  if (fechaFin) {
-    conditions.push("l.fechaLectura <= ?");
-    params.push(fechaFin);
-  }
+  if (medidorId) { medConds.push("m.id = ?"); medParams.push(medidorId); }
+  if (recurso) { medConds.push("t.recurso = ?"); medParams.push(recurso); }
+  const medWhere = medConds.length > 0 ? `WHERE ${medConds.join(" AND ")}` : "";
 
-  const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
-
-  const { results } = await c.env.DB.prepare(`
-    SELECT 
-      i.nombre as instalacionNombre,
-      m.id as medidorId,
-      m.codigo as medidorCodigo,
-      t.recurso,
-      t.unidad,
-      COALESCE(MIN(l.valor), 0) as lecturaInicial,
-      COALESCE(MAX(l.valor), 0) as lecturaFinal,
-      COALESCE(MAX(l.valor) - MIN(l.valor), 0) as consumoNeto,
-      COUNT(l.id) as totalLecturas
+  const { results: meds } = await c.env.DB.prepare(`
+    SELECT i.nombre as instalacionNombre, m.id as medidorId, m.codigo as medidorCodigo,
+      t.recurso, t.unidad, t.tipoMedicion
     FROM medidores m
     JOIN instalaciones i ON m.instalacionId = i.id
     JOIN tipos_medidor t ON m.tipoMedidorId = t.id
-    LEFT JOIN lecturas l ON l.medidorId = m.id
-    ${whereClause}
-    GROUP BY m.id
-    ORDER BY i.nombre, m.codigo
-  `).bind(...params).all();
+    ${medWhere}
+    ORDER BY i.nombre, m.codigo LIMIT 200
+  `).bind(...medParams).all<{
+    instalacionNombre: string; medidorId: string; medidorCodigo: string;
+    recurso: string; unidad: string; tipoMedicion: string;
+  }>();
 
-  return c.json(results);
+  const out = [];
+  for (const m of meds) {
+    const lecConds: string[] = ["medidorId = ?"];
+    const lecParams: unknown[] = [m.medidorId];
+    if (fechaInicio) { lecConds.push("fechaLectura >= ?"); lecParams.push(fechaInicio); }
+    if (fechaFin) { lecConds.push("fechaLectura <= ?"); lecParams.push(fechaFin); }
+    const { results: lecs } = await c.env.DB.prepare(
+      `SELECT valor FROM lecturas WHERE ${lecConds.join(" AND ")} ORDER BY fechaLectura ASC LIMIT 500`
+    ).bind(...lecParams).all<{ valor: number }>();
+    let consumoNeto = 0;
+    if (m.tipoMedicion === "ACUMULATIVO") {
+      if (lecs.length >= 2) consumoNeto = Math.max(0, Number((lecs[lecs.length - 1].valor - lecs[0].valor).toFixed(2)));
+    } else if (m.tipoMedicion === "NIVEL") {
+      if (lecs.length >= 1) {
+        const bajada = Math.max(0, Number((lecs[0].valor - lecs[lecs.length - 1].valor).toFixed(2)));
+        let recTotal: number;
+        try {
+          const recConds: string[] = ["medidorId = ?", "tipo = 'RECARGA_TANQUE'"];
+          const recParams: unknown[] = [m.medidorId];
+          if (fechaInicio) { recConds.push("fechaMantenimiento >= ?"); recParams.push(fechaInicio); }
+          if (fechaFin) { recConds.push("fechaMantenimiento <= ?"); recParams.push(fechaFin); }
+          const rec = await c.env.DB.prepare(
+            `SELECT COALESCE(SUM(volumenRecargado),0) as t FROM registros_mantenimiento WHERE ${recConds.join(" AND ")}`
+          ).bind(...recParams).first<{ t: number }>();
+          recTotal = rec?.t || 0;
+        } catch { recTotal = 0; }
+        recTotal = recTotal ?? 0;
+        consumoNeto = Number((bajada + recTotal).toFixed(2));
+      }
+    } else if (lecs.length >= 1) {
+      const suma = lecs.reduce((a, l) => a + l.valor, 0);
+      consumoNeto = Number((suma / lecs.length).toFixed(2));
+    }
+    out.push({
+      instalacionNombre: m.instalacionNombre,
+      medidorId: m.medidorId,
+      medidorCodigo: m.medidorCodigo,
+      recurso: m.recurso,
+      unidad: m.unidad,
+      lecturaInicial: lecs.length > 0 ? lecs[0].valor : 0,
+      lecturaFinal: lecs.length > 0 ? lecs[lecs.length - 1].valor : 0,
+      consumoNeto,
+      totalLecturas: lecs.length,
+    });
+  }
+
+  return c.json(out);
 });
 
 // Exportar reporte de consumos a CSV
@@ -310,65 +368,91 @@ reportesRouter.get("/api/reportes/consumos/exportar-csv", async (c) => {
     }
   }
 
-  const conditions: string[] = [];
-  const params: unknown[] = [];
+  const medConds: string[] = [];
+  const medParams: unknown[] = [];
 
   if (instalacionId) {
-    conditions.push("m.instalacionId = ?");
-    params.push(instalacionId);
+    medConds.push("m.instalacionId = ?");
+    medParams.push(instalacionId);
   } else if (user && user.rol !== "ADMIN") {
     const allowed = user.allowedInstalacionIds || [];
-    conditions.push(`m.instalacionId IN (${sqlInList(allowed)})`);
+    medConds.push(`m.instalacionId IN (${sqlInList(allowed)})`);
   }
   if (medidorId) {
-    conditions.push("m.id = ?");
-    params.push(medidorId);
+    medConds.push("m.id = ?");
+    medParams.push(medidorId);
   }
   if (recurso) {
-    conditions.push("t.recurso = ?");
-    params.push(recurso);
-  }
-  if (fechaInicio) {
-    conditions.push("l.fechaLectura >= ?");
-    params.push(fechaInicio);
-  }
-  if (fechaFin) {
-    conditions.push("l.fechaLectura <= ?");
-    params.push(fechaFin);
+    medConds.push("t.recurso = ?");
+    medParams.push(recurso);
   }
 
-  const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+  const medWhere = medConds.length > 0 ? `WHERE ${medConds.join(" AND ")}` : "";
 
-  const { results } = await c.env.DB.prepare(`
-    SELECT 
+  const { results: medsCsv } = await c.env.DB.prepare(`
+    SELECT
       i.nombre as instalacionNombre,
+      m.id as medidorId,
       m.codigo as medidorCodigo,
       t.recurso,
       t.unidad,
-      COALESCE(MIN(l.valor), 0) as lecturaInicial,
-      COALESCE(MAX(l.valor), 0) as lecturaFinal,
-      COALESCE(MAX(l.valor) - MIN(l.valor), 0) as consumoNeto,
-      COUNT(l.id) as totalLecturas
+      t.tipoMedicion
     FROM medidores m
     JOIN instalaciones i ON m.instalacionId = i.id
     JOIN tipos_medidor t ON m.tipoMedidorId = t.id
-    LEFT JOIN lecturas l ON l.medidorId = m.id
-    ${whereClause}
-    GROUP BY m.id
-    ORDER BY i.nombre, m.codigo
-  `).bind(...params).all<{
-    instalacionNombre: string;
-    medidorCodigo: string;
-    recurso: string;
-    unidad: string;
-    lecturaInicial: number;
-    lecturaFinal: number;
-    consumoNeto: number;
-    totalLecturas: number;
+    ${medWhere}
+    ORDER BY i.nombre, m.codigo LIMIT 200
+  `).bind(...medParams).all<{
+    instalacionNombre: string; medidorId: string; medidorCodigo: string;
+    recurso: string; unidad: string; tipoMedicion: string;
   }>();
 
+  const rows: Array<{ instalacionNombre: string; medidorCodigo: string; recurso: string; unidad: string; lecturaInicial: number; lecturaFinal: number; consumoNeto: number; totalLecturas: number }> = [];
+  for (const m of medsCsv) {
+    const lecConds: string[] = ["medidorId = ?"];
+    const lecParams: unknown[] = [m.medidorId];
+    if (fechaInicio) { lecConds.push("fechaLectura >= ?"); lecParams.push(fechaInicio); }
+    if (fechaFin) { lecConds.push("fechaLectura <= ?"); lecParams.push(fechaFin); }
+    const { results: lecs } = await c.env.DB.prepare(
+      `SELECT valor FROM lecturas WHERE ${lecConds.join(" AND ")} ORDER BY fechaLectura ASC LIMIT 500`
+    ).bind(...lecParams).all<{ valor: number }>();
+    let consumoNeto = 0;
+    if (m.tipoMedicion === "ACUMULATIVO") {
+      if (lecs.length >= 2) consumoNeto = Math.max(0, Number((lecs[lecs.length - 1].valor - lecs[0].valor).toFixed(2)));
+    } else if (m.tipoMedicion === "NIVEL") {
+      if (lecs.length >= 1) {
+        const bajada = Math.max(0, Number((lecs[0].valor - lecs[lecs.length - 1].valor).toFixed(2)));
+        let recTotal: number;
+        try {
+          const recConds: string[] = ["medidorId = ?", "tipo = 'RECARGA_TANQUE'"];
+          const recParams: unknown[] = [m.medidorId];
+          if (fechaInicio) { recConds.push("fechaMantenimiento >= ?"); recParams.push(fechaInicio); }
+          if (fechaFin) { recConds.push("fechaMantenimiento <= ?"); recParams.push(fechaFin); }
+          const rec = await c.env.DB.prepare(
+            `SELECT COALESCE(SUM(volumenRecargado),0) as t FROM registros_mantenimiento WHERE ${recConds.join(" AND ")}`
+          ).bind(...recParams).first<{ t: number }>();
+          recTotal = rec?.t || 0;
+        } catch { recTotal = 0; }
+        recTotal = recTotal ?? 0;
+        consumoNeto = Number((bajada + recTotal).toFixed(2));
+      }
+    } else if (lecs.length >= 1) {
+      consumoNeto = Number((lecs.reduce((a, l) => a + l.valor, 0) / lecs.length).toFixed(2));
+    }
+    rows.push({
+      instalacionNombre: m.instalacionNombre,
+      medidorCodigo: m.medidorCodigo,
+      recurso: m.recurso,
+      unidad: m.unidad,
+      lecturaInicial: lecs.length > 0 ? lecs[0].valor : 0,
+      lecturaFinal: lecs.length > 0 ? lecs[lecs.length - 1].valor : 0,
+      consumoNeto,
+      totalLecturas: lecs.length,
+    });
+  }
+
   let csv = "Instalacion,Medidor,Recurso,Unidad,Lectura Inicial,Lectura Final,Consumo Neto,Total Lecturas\r\n";
-  for (const r of results) {
+  for (const r of rows) {
     csv += `"${r.instalacionNombre}","${r.medidorCodigo}","${r.recurso}","${r.unidad}",${r.lecturaInicial},${r.lecturaFinal},${r.consumoNeto},${r.totalLecturas}\r\n`;
   }
 

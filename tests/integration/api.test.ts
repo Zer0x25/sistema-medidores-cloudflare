@@ -378,7 +378,7 @@ describe("Integración HTTP en Cloudflare Workers (Hono App)", () => {
       );
 
       expect(res.status).toBe(200);
-      expect(executedSql).toContain("WHERE i.id IN ('inst-01')");
+      expect(executedSql).toContain("i.id IN ('inst-01')");
     });
 
     it("GET /api/instalaciones debe retornar [] inmediatamente si el usuario no tiene sedes asignadas", async () => {

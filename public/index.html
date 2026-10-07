@@ -58,6 +58,13 @@
           </svg>
           Dashboard
         </button>
+        <button class="role-btn" id="tabParqueBtn" data-testid="nav-parque" onclick="switchRole('parque')">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 21h18M5 21V7l7-4 7 4v14"/>
+            <path d="M9 21v-4h6v4"/>
+          </svg>
+          Sedes &amp; Medidores
+        </button>
         <button class="role-btn" id="tabReportesBtn" data-testid="nav-reportes" onclick="switchRole('reportes')">
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
@@ -222,6 +229,13 @@
             <rect x="3" y="14" width="7" height="7"/>
           </svg>
           Dashboard
+        </button>
+        <button class="mobile-nav-btn" id="mobileTabParqueBtn" data-testid="mobile-nav-parque" onclick="switchRole('parque'); window.closeMobileMenu();">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 21h18M5 21V7l7-4 7 4v14"/>
+            <path d="M9 21v-4h6v4"/>
+          </svg>
+          Sedes &amp; Medidores
         </button>
         <button class="mobile-nav-btn" id="mobileTabReportesBtn" data-testid="mobile-nav-reportes" onclick="switchRole('reportes'); window.closeMobileMenu();">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -443,18 +457,7 @@
           <p class="view-desc">Supervisión en tiempo real del parque de telemetría, alertas operativas y consumos netos auditados.</p>
         </div>
         <div class="view-actions">
-          <button class="btn btn-primary" id="btnOpenModalMedidor" data-testid="btn-nuevo-medidor" onclick="openModal('modalMedidor')">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M12 5v14M5 12h14"/>
-            </svg>
-            Nuevo Medidor
-          </button>
-          <button class="btn btn-outline" id="btnOpenModalInstalacion" data-testid="btn-nueva-instalacion" onclick="openModal('modalInstalacion')">
-            Nueva Instalación
-          </button>
-          <button class="btn btn-outline" id="btnOpenModalTipo" data-testid="btn-nuevo-tipo" onclick="openModal('modalTipo')">
-            Nuevo Tipo
-          </button>
+          <button class="btn btn-ghost btn-sm" data-testid="btn-refrescar-dashboard" onclick="cargarDashboard()">Refrescar</button>
         </div>
       </div>
 
@@ -561,6 +564,102 @@
     </section>
 
     <!-- ============================================================== -->
+    <!-- ============================================================== -->
+    <!-- VISTA 1B: SEDES & MEDIDORES / PARQUE (feat-023) -->
+    <!-- ============================================================== -->
+    <section class="view-panel" id="viewParque" data-testid="view-parque" role="region" aria-label="Gestión de Sedes y Medidores" aria-labelledby="headingParque">
+      <div class="view-header">
+        <div>
+          <h1 class="view-title" id="headingParque">Sedes & Medidores</h1>
+          <p class="view-desc">Alta, edición, archivado y ciclo de vida del parque de sedes y medidores físicos.</p>
+        </div>
+        <div class="view-actions">
+          <button class="btn btn-primary" id="btnOpenModalMedidor" data-testid="btn-nuevo-medidor" onclick="openModal('modalMedidor')">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 5v14M5 12h14"/>
+            </svg>
+            Nuevo Medidor
+          </button>
+          <button class="btn btn-outline" id="btnOpenModalInstalacion" data-testid="btn-nueva-instalacion" onclick="openModal('modalInstalacion')">
+            Nueva Instalación
+          </button>
+          <button class="btn btn-outline" id="btnOpenModalTipo" data-testid="btn-nuevo-tipo" onclick="openModal('modalTipo')">
+            Nuevo Tipo
+          </button>
+        </div>
+      </div>
+
+      <!-- Gestión del Parque: Instalaciones & Medidores (feat-022) -->
+      <div class="card mt-6" id="seccionGestionParque" data-testid="seccion-gestion-parque">
+        <div class="card-header" style="flex-wrap: wrap; gap: 0.75rem;">
+          <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+            <h2 class="card-title">🏢 Parque de Sedes &amp; Medidores</h2>
+            <div class="btn-group" role="group" aria-label="Selector de entidad del parque">
+              <button type="button" class="btn btn-sm btn-outline active" id="btnParqueTabInstalaciones" data-testid="btn-parque-tab-instalaciones" onclick="setParqueTab('instalaciones')">
+                Sedes / Instalaciones
+              </button>
+              <button type="button" class="btn btn-sm btn-outline" id="btnParqueTabMedidores" data-testid="btn-parque-tab-medidores" onclick="setParqueTab('medidores')">
+                Medidores Físicos
+              </button>
+            </div>
+          </div>
+          <div class="header-filters" style="display: flex; align-items: center; gap: 0.5rem;">
+            <select id="filtroParqueEstado" class="form-select filter-select" data-testid="filtro-parque-estado" onchange="cambiarFiltroParqueEstado(this.value)">
+              <option value="activas" selected>Solo Activas / Activos</option>
+              <option value="archivadas">Solo Archivadas / Archivados</option>
+              <option value="todas">Ver Todos los Registros</option>
+            </select>
+            <button class="btn btn-ghost btn-sm" id="btnRefrescarParque" data-testid="btn-refrescar-parque" onclick="cargarParqueAdmin()">Refrescar</button>
+          </div>
+        </div>
+
+        <!-- Tabla de Instalaciones -->
+        <div id="contenedorTablaInstalaciones" class="table-responsive">
+          <table class="data-table" id="tablaGestionInstalaciones" data-testid="tabla-gestion-instalaciones">
+            <thead>
+              <tr>
+                <th>Código</th>
+                <th>Nombre de Sede</th>
+                <th>Ubicación Física</th>
+                <th>Estado</th>
+                <th>Marcha Blanca</th>
+                <th style="text-align: right;">Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="tbodyGestionInstalaciones" data-testid="tbody-gestion-instalaciones">
+              <tr>
+                <td colspan="6" class="empty-state">Cargando instalaciones...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Tabla de Medidores -->
+        <div id="contenedorTablaMedidores" class="table-responsive" style="display: none;">
+          <table class="data-table" id="tablaGestionMedidores" data-testid="tabla-gestion-medidores">
+            <thead>
+              <tr>
+                <th>Código</th>
+                <th>Sede / Instalación</th>
+                <th>Recurso &amp; Tipo</th>
+                <th>Ubicación Interna</th>
+                <th>N° Serie</th>
+                <th>Estado</th>
+                <th>Marcha Blanca</th>
+                <th style="text-align: right;">Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="tbodyGestionMedidores" data-testid="tbody-gestion-medidores">
+              <tr>
+                <td colspan="8" class="empty-state">Cargando medidores...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </section>
+
     <!-- VISTA 2: MODO TERRENO (OPERADOR) -->
     <!-- ============================================================== -->
     <section class="view-panel" id="viewOperador" data-testid="view-operador" role="region" aria-label="Modo Terreno Operador" aria-labelledby="headingOperador">
@@ -1209,6 +1308,11 @@
             <input type="text" id="inputInstalacionNombre" data-testid="input-instalacion-nombre" class="form-input" placeholder="Ej. Planta Maipú, Sede Providencia" required>
           </div>
           <div class="form-group">
+            <label for="inputInstalacionCodigo" class="form-label">Código Identificador (Opcional)</label>
+            <input type="text" id="inputInstalacionCodigo" data-testid="input-instalacion-codigo" class="form-input font-mono" placeholder="Ej. INS-01, SEDE-NORTE">
+            <span class="form-hint">Si se omite, se generará automáticamente a partir del nombre.</span>
+          </div>
+          <div class="form-group">
             <label for="inputInstalacionDireccion" class="form-label">Dirección Física *</label>
             <input type="text" id="inputInstalacionDireccion" data-testid="input-instalacion-direccion" class="form-input" placeholder="Ej. Av. Central 4500, Sector Industrial" required>
           </div>
@@ -1263,6 +1367,19 @@
               <option value="NIVEL">Nivel (Capacidad de tanque / Fluctuante)</option>
               <option value="INSTANTANEO">Instantáneo (Flujo o potencia en tiempo real)</option>
             </select>
+            <span class="form-hint">NIVEL permite bajadas (consumo) y subidas solo con recarga auditada. INSTANTANEO no acumula.</span>
+          </div>
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label for="inputTipoMultiplicador" class="form-label">Multiplicador / Factor *</label>
+              <input type="number" id="inputTipoMultiplicador" data-testid="input-tipo-multiplicador" class="form-input font-mono" placeholder="Ej. 1, 20 (trafo 100/5)" min="0.000001" step="any" value="1" required>
+              <span class="form-hint">Factor del trafo o peso de pulso. Valor real = dial × factor.</span>
+            </div>
+            <div class="form-group">
+              <label for="inputTipoCapacidad" class="form-label">Capacidad Máx. Tanque (solo NIVEL)</label>
+              <input type="number" id="inputTipoCapacidad" data-testid="input-tipo-capacidad" class="form-input font-mono" placeholder="Ej. 5000" min="0" step="any">
+              <span class="form-hint">Cota superior en la unidad del tipo. Vacío = sin cota.</span>
+            </div>
           </div>
           <div class="form-group">
             <label for="inputTipoDesc" class="form-label">Descripción</label>
@@ -1312,6 +1429,18 @@
               <input type="text" id="inputMedidorSerie" data-testid="input-medidor-serie" class="form-input font-mono" placeholder="Ej. SN-883492">
             </div>
           </div>
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label for="inputMedidorCodigoExterno" class="form-label">Código Externo / OBIS (Opcional)</label>
+              <input type="text" id="inputMedidorCodigoExterno" data-testid="input-medidor-codigo-externo" class="form-input font-mono" placeholder="Ej. 1-0:1.8.0*255">
+              <span class="form-hint">ID interoperable (M-Bus / OBIS / fabricante).</span>
+            </div>
+            <div class="form-group">
+              <label for="inputMedidorFactor" class="form-label">Factor Instalación (Opcional)</label>
+              <input type="number" id="inputMedidorFactor" data-testid="input-medidor-factor" class="form-input font-mono" placeholder="Ej. 20 (trafo 100/5)" min="0.000001" step="any">
+              <span class="form-hint">Override del multiplicador del tipo. Vacío = usa el del tipo.</span>
+            </div>
+          </div>
           <div class="form-group">
             <label for="inputMedidorUbicacion" class="form-label">Ubicación Interna en Planta *</label>
             <input type="text" id="inputMedidorUbicacion" data-testid="input-medidor-ubicacion" class="form-input" placeholder="Ej. Sala de bombas piso -1, Caseta exterior" required>
@@ -1320,6 +1449,90 @@
         <div class="modal-footer">
           <button type="button" class="btn btn-outline" onclick="closeModal('modalMedidor')">Cancelar</button>
           <button type="submit" class="btn btn-primary" id="btnSubmitMedidor" data-testid="btn-submit-medidor">Registrar Medidor</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ============================================================== -->
+  <!-- MODAL: EDITAR INSTALACIÓN / SEDE (feat-022)                    -->
+  <!-- ============================================================== -->
+  <div class="modal-backdrop" id="modalEditarInstalacion" data-testid="modal-editar-instalacion" data-state="closed" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="modalEditarInstalacionTitulo">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modalEditarInstalacionTitulo">✏️ Editar Instalación / Sede</h3>
+        <button class="btn-close" id="btnCloseModalEditarInstalacion" data-testid="btn-close-modal-editar-instalacion" onclick="closeModal('modalEditarInstalacion')" aria-label="Cerrar">&times;</button>
+      </div>
+      <form id="formEditarInstalacion" data-testid="form-editar-instalacion" onsubmit="submitEditarInstalacion(event)">
+        <input type="hidden" id="inputEditarInstalacionId" />
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="inputEditarInstalacionNombre" class="form-label">Nombre de la Sede *</label>
+            <input type="text" id="inputEditarInstalacionNombre" data-testid="input-editar-instalacion-nombre" class="form-input" required>
+          </div>
+          <div class="form-group">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem;">
+              <label for="inputEditarInstalacionCodigo" class="form-label" style="margin-bottom: 0;">Código Identificador</label>
+              <span id="badgeGraciaInstalacion" class="badge"></span>
+            </div>
+            <input type="text" id="inputEditarInstalacionCodigo" data-testid="input-editar-instalacion-codigo" class="form-input font-mono">
+            <span class="form-hint" id="hintGraciaInstalacion">El código es editable durante los primeros 30 días de marcha blanca. Luego se cristaliza.</span>
+          </div>
+          <div class="form-group">
+            <label for="inputEditarInstalacionDireccion" class="form-label">Dirección Física / Ubicación *</label>
+            <input type="text" id="inputEditarInstalacionDireccion" data-testid="input-editar-instalacion-direccion" class="form-input" required>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" onclick="closeModal('modalEditarInstalacion')">Cancelar</button>
+          <button type="submit" class="btn btn-primary" id="btnSubmitEditarInstalacion" data-testid="btn-submit-editar-instalacion">Guardar Cambios</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ============================================================== -->
+  <!-- MODAL: EDITAR MEDIDOR FÍSICO (feat-022)                       -->
+  <!-- ============================================================== -->
+  <div class="modal-backdrop" id="modalEditarMedidor" data-testid="modal-editar-medidor" data-state="closed" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="modalEditarMedidorTitulo">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modalEditarMedidorTitulo">✏️ Editar Medidor Físico</h3>
+        <button class="btn-close" id="btnCloseModalEditarMedidor" data-testid="btn-close-modal-editar-medidor" onclick="closeModal('modalEditarMedidor')" aria-label="Cerrar">&times;</button>
+      </div>
+      <form id="formEditarMedidor" data-testid="form-editar-medidor" onsubmit="submitEditarMedidor(event)">
+        <input type="hidden" id="inputEditarMedidorId" />
+        <div class="modal-body">
+          <div class="form-group">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem;">
+              <label for="inputEditarMedidorCodigo" class="form-label" style="margin-bottom: 0;">Código Identificador *</label>
+              <span id="badgeGraciaMedidor" class="badge"></span>
+            </div>
+            <input type="text" id="inputEditarMedidorCodigo" data-testid="input-editar-medidor-codigo" class="form-input font-mono" required>
+            <span class="form-hint" id="hintGraciaMedidor">El código es editable durante los primeros 30 días de marcha blanca. Luego se cristaliza.</span>
+          </div>
+          <div class="form-group">
+            <label for="inputEditarMedidorSerie" class="form-label">N° de Serie Físico</label>
+            <input type="text" id="inputEditarMedidorSerie" data-testid="input-editar-medidor-serie" class="form-input font-mono">
+          </div>
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label for="inputEditarMedidorCodigoExterno" class="form-label">Código Externo / OBIS</label>
+              <input type="text" id="inputEditarMedidorCodigoExterno" data-testid="input-editar-medidor-codigo-externo" class="form-input font-mono" placeholder="Ej. 1-0:1.8.0*255">
+            </div>
+            <div class="form-group">
+              <label for="inputEditarMedidorFactor" class="form-label">Factor Instalación</label>
+              <input type="number" id="inputEditarMedidorFactor" data-testid="input-editar-medidor-factor" class="form-input font-mono" placeholder="Vacío = usa el del tipo" min="0.000001" step="any">
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="inputEditarMedidorUbicacion" class="form-label">Ubicación Interna en Planta *</label>
+            <input type="text" id="inputEditarMedidorUbicacion" data-testid="input-editar-medidor-ubicacion" class="form-input" required>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" onclick="closeModal('modalEditarMedidor')">Cancelar</button>
+          <button type="submit" class="btn btn-primary" id="btnSubmitEditarMedidor" data-testid="btn-submit-editar-medidor">Guardar Cambios</button>
         </div>
       </form>
     </div>
@@ -1616,6 +1829,7 @@
                 <option value="REEMPLAZO_EQUIPO">Reemplazo / Sustitución de Equipo</option>
                 <option value="INSPECCION">Inspección Física Rutinaria</option>
                 <option value="BAJA_TECNICA">Baja Técnica Definitiva</option>
+                <option value="RECARGA_TANQUE">Recarga / Llenado de Tanque (NIVEL)</option>
               </select>
             </div>
           </div>
@@ -1661,6 +1875,19 @@
             <div class="form-group" id="mantGroupNuevoCodigo">
               <label for="mantNuevoMedidorCodigo" class="form-label">Código del Medidor Sustituto</label>
               <input type="text" id="mantNuevoMedidorCodigo" data-testid="input-mant-sustituto-codigo" class="form-input" placeholder="Ej: MED-AG-01-V2">
+            </div>
+          </div>
+
+          <div id="mantSeccionRecarga" class="form-grid-2" style="display: none;">
+            <div class="form-group">
+              <label for="mantVolumenRecargado" class="form-label">Volumen Recargado *</label>
+              <input type="number" step="0.01" min="0" id="mantVolumenRecargado" data-testid="input-mant-volumen-recargado" class="form-input font-mono" placeholder="Ej. 1000">
+              <span class="form-hint">Litros (u unidad del tipo) ingresados al tanque.</span>
+            </div>
+            <div class="form-group">
+              <label for="mantNivelPosterior" class="form-label">Nivel Posterior *</label>
+              <input type="number" step="0.01" min="0" id="mantNivelPosterior" data-testid="input-mant-nivel-posterior" class="form-input font-mono" placeholder="Ej. 5000">
+              <span class="form-hint">Nivel medido tras la recarga (debe ser >= 0).</span>
             </div>
           </div>
 

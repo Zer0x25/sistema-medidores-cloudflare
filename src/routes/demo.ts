@@ -41,30 +41,30 @@ demoRouter.post("/api/demo/seed", async (c) => {
        ('usr-oper-01', 'operador@medidores.cl', '${defaultPasswordHash}', 'Juan Operador Terreno', 'OPERADOR', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
      ON CONFLICT("email") DO UPDATE SET activo = 1, passwordHash = '${defaultPasswordHash}', nombre = excluded.nombre, rol = excluded.rol;`,
 
-    // 2. Instalaciones
-    `INSERT INTO "instalaciones" ("id", "nombre", "ubicacion", "activa", "createdAt", "updatedAt")
+    // 2. Instalaciones (con codigo feat-022)
+    `INSERT INTO "instalaciones" ("id", "codigo", "nombre", "ubicacion", "activa", "createdAt", "updatedAt")
      VALUES
-       ('inst-01', 'Planta Industrial Norte', 'Sector Industrial Panamericana Km 15', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-       ('inst-02', 'Edificio Corporativo', 'Av. Las Condes 12500', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-     ON CONFLICT("id") DO UPDATE SET nombre = excluded.nombre, ubicacion = excluded.ubicacion, activa = 1;`,
+       ('inst-01', 'INS-NORTE', 'Planta Industrial Norte', 'Sector Industrial Panamericana Km 15', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+       ('inst-02', 'INS-CORP', 'Edificio Corporativo', 'Av. Las Condes 12500', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+     ON CONFLICT("id") DO UPDATE SET codigo = excluded.codigo, nombre = excluded.nombre, ubicacion = excluded.ubicacion, activa = 1;`,
 
-    // 3. Tipos de Medidor
-    `INSERT INTO "tipos_medidor" ("id", "nombre", "recurso", "unidad", "tipoMedicion", "activo", "createdAt", "updatedAt")
+    // 3. Tipos de Medidor (con multiplicador/capacidad feat-024)
+    `INSERT INTO "tipos_medidor" ("id", "nombre", "recurso", "unidad", "tipoMedicion", "multiplicador", "capacidadMaxima", "activo", "createdAt", "updatedAt")
      VALUES
-       ('tipo-agua', 'Agua Potable Red', 'AGUA', 'M3', 'ACUMULATIVO', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-       ('tipo-luz', 'Electricidad Trifásica', 'LUZ', 'KWH', 'ACUMULATIVO', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-       ('tipo-petroleo', 'Diésel Generador Respaldo', 'PETROLEO', 'LITROS', 'NIVEL', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-       ('tipo-gas', 'Gas Natural Calderas', 'GAS', 'M3', 'ACUMULATIVO', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-     ON CONFLICT("id") DO UPDATE SET nombre = excluded.nombre, recurso = excluded.recurso, unidad = excluded.unidad, tipoMedicion = excluded.tipoMedicion, activo = 1;`,
+       ('tipo-agua', 'Agua Potable Red', 'AGUA', 'M3', 'ACUMULATIVO', 1, NULL, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+       ('tipo-luz', 'Electricidad Trifásica', 'LUZ', 'KWH', 'ACUMULATIVO', 1, NULL, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+       ('tipo-petroleo', 'Diésel Generador Respaldo', 'PETROLEO', 'LITROS', 'NIVEL', 1, 5000, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+       ('tipo-gas', 'Gas Natural Calderas', 'GAS', 'M3', 'ACUMULATIVO', 1, NULL, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+     ON CONFLICT("id") DO UPDATE SET nombre = excluded.nombre, recurso = excluded.recurso, unidad = excluded.unidad, tipoMedicion = excluded.tipoMedicion, multiplicador = excluded.multiplicador, capacidadMaxima = excluded.capacidadMaxima, activo = 1;`,
 
     // 4. Medidores Físicos (códigos canónicos esperados por tests E2E)
-    `INSERT INTO "medidores" ("id", "instalacionId", "tipoMedidorId", "codigo", "numeroSerie", "ubicacionInterna", "precintoActual", "activo", "createdAt", "updatedAt")
+    `INSERT INTO "medidores" ("id", "instalacionId", "tipoMedidorId", "codigo", "codigoExterno", "factorInstalacion", "numeroSerie", "ubicacionInterna", "precintoActual", "activo", "createdAt", "updatedAt")
      VALUES
-       ('med-01', 'inst-01', 'tipo-agua', 'MED-AG-NORTE-01', 'SN-AG-99120', 'Sala de bombas - Patio Exterior', 'PREC-AG-2026-01', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-       ('med-02', 'inst-01', 'tipo-luz', 'MED-LUZ-NORTE-01', 'SN-EL-55410', 'Subestación Eléctrica 1', 'PREC-LUZ-2026-02', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-       ('med-03', 'inst-01', 'tipo-petroleo', 'MED-DIE-NORTE-01', 'SN-PE-11200', 'Patio de Tanques - Tanque 5.000L', 'PREC-DIE-2026-03', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-       ('med-04', 'inst-02', 'tipo-agua', 'MED-AG-CORP-01', 'SN-AG-88200', 'Subterráneo -1 Sala Técnica', 'PREC-CORP-2026-04', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-       ('med-05', 'inst-02', 'tipo-gas', 'MED-GAS-CORP-01', 'SN-GS-88300', 'Azotea Climatización', 'PREC-GAS-2026-05', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+       ('med-01', 'inst-01', 'tipo-agua', 'MED-AG-NORTE-01', NULL, NULL, 'SN-AG-99120', 'Sala de bombas - Patio Exterior', 'PREC-AG-2026-01', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+       ('med-02', 'inst-01', 'tipo-luz', 'MED-LUZ-NORTE-01', NULL, NULL, 'SN-EL-55410', 'Subestación Eléctrica 1', 'PREC-LUZ-2026-02', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+       ('med-03', 'inst-01', 'tipo-petroleo', 'MED-DIE-NORTE-01', NULL, NULL, 'SN-PE-11200', 'Patio de Tanques - Tanque 5.000L', 'PREC-DIE-2026-03', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+       ('med-04', 'inst-02', 'tipo-agua', 'MED-AG-CORP-01', NULL, NULL, 'SN-AG-88200', 'Subterráneo -1 Sala Técnica', 'PREC-CORP-2026-04', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+       ('med-05', 'inst-02', 'tipo-gas', 'MED-GAS-CORP-01', NULL, NULL, 'SN-GS-88300', 'Azotea Climatización', 'PREC-GAS-2026-05', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
      ON CONFLICT("id") DO UPDATE SET instalacionId = excluded.instalacionId, tipoMedidorId = excluded.tipoMedidorId, codigo = excluded.codigo, numeroSerie = excluded.numeroSerie, ubicacionInterna = excluded.ubicacionInterna, precintoActual = excluded.precintoActual, activo = 1;`,
 
     // 5. Asignaciones de Operador
@@ -75,17 +75,17 @@ demoRouter.post("/api/demo/seed", async (c) => {
        ('asig-03', 'inst-02', 'usr-oper-01', CURRENT_TIMESTAMP)
      ON CONFLICT("id") DO NOTHING;`,
 
-    // 6. Lecturas de Demostración y Pruebas
-    `INSERT INTO "lecturas" ("id", "medidorId", "operadorId", "valor", "fechaLectura", "notas", "createdAt")
+    // 6. Lecturas de Demostración y Pruebas (con origen/valorBruto/factor feat-024/025)
+    `INSERT INTO "lecturas" ("id", "medidorId", "operadorId", "valor", "valorBruto", "multiplicadorAplicado", "origen", "fechaLectura", "notas", "createdAt")
      VALUES
-       ('lec-01', 'med-01', 'usr-oper-01', 1200.0, datetime('now', '-48 hours'), 'Lectura inicial', datetime('now', '-48 hours')),
-       ('lec-02', 'med-01', 'usr-oper-01', 1245.5, datetime('now', '-24 hours'), 'Cierre día anterior', datetime('now', '-24 hours')),
-       ('lec-03', 'med-01', 'usr-oper-01', 1289.0, datetime('now', '-2 hours'), 'Turno mañana', datetime('now', '-2 hours')),
-       ('lec-04', 'med-02', 'usr-oper-01', 45000.0, datetime('now', '-24 hours'), 'Lectura inicio de semana', datetime('now', '-24 hours')),
-       ('lec-05', 'med-02', 'usr-oper-01', 45320.0, datetime('now', '-1 hours'), 'Turno actual', datetime('now', '-1 hours')),
-       ('lec-06', 'med-03', 'usr-oper-01', 4800.0, datetime('now', '-72 hours'), 'Llenado de estanque', datetime('now', '-72 hours')),
-       ('lec-07', 'med-03', 'usr-oper-01', 4200.0, datetime('now', '-30 hours'), 'Consumo prueba de generador', datetime('now', '-30 hours'))
-     ON CONFLICT("id") DO UPDATE SET valor = excluded.valor, fechaLectura = excluded.fechaLectura, notas = excluded.notas;`,
+       ('lec-01', 'med-01', 'usr-oper-01', 1200.0, 1200.0, 1, 'MANUAL', datetime('now', '-48 hours'), 'Lectura inicial', datetime('now', '-48 hours')),
+       ('lec-02', 'med-01', 'usr-oper-01', 1245.5, 1245.5, 1, 'MANUAL', datetime('now', '-24 hours'), 'Cierre día anterior', datetime('now', '-24 hours')),
+       ('lec-03', 'med-01', 'usr-oper-01', 1289.0, 1289.0, 1, 'MANUAL', datetime('now', '-2 hours'), 'Turno mañana', datetime('now', '-2 hours')),
+       ('lec-04', 'med-02', 'usr-oper-01', 45000.0, 45000.0, 1, 'MANUAL', datetime('now', '-24 hours'), 'Lectura inicio de semana', datetime('now', '-24 hours')),
+       ('lec-05', 'med-02', 'usr-oper-01', 45320.0, 45320.0, 1, 'MANUAL', datetime('now', '-1 hours'), 'Turno actual', datetime('now', '-1 hours')),
+       ('lec-06', 'med-03', 'usr-oper-01', 4800.0, 4800.0, 1, 'MANUAL', datetime('now', '-72 hours'), 'Llenado de estanque', datetime('now', '-72 hours')),
+       ('lec-07', 'med-03', 'usr-oper-01', 4200.0, 4200.0, 1, 'MANUAL', datetime('now', '-30 hours'), 'Consumo prueba de generador', datetime('now', '-30 hours'))
+     ON CONFLICT("id") DO UPDATE SET valor = excluded.valor, valorBruto = excluded.valorBruto, multiplicadorAplicado = excluded.multiplicadorAplicado, origen = excluded.origen, fechaLectura = excluded.fechaLectura, notas = excluded.notas;`,
 
     // 7. Reglas de Alerta Iniciales
     `INSERT INTO "reglas_alerta" ("id", "nombre", "tipo", "recurso", "umbralValor", "activa", "createdAt", "updatedAt")

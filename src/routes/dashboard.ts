@@ -154,7 +154,7 @@ dashboardRouter.get("/api/dashboard/desatendidos", async (c) => {
   return c.json(desatendidos);
 });
 
-// 3. Consumo neto agrupado por instalación y recurso
+// 3. Consumo neto agrupado por instalación y recurso (feat-024: por modo ACUMULATIVO/NIVEL/INSTANTANEO)
 dashboardRouter.get("/api/dashboard/consumos", async (c) => {
   const user = c.get("user");
   let whereExtra = "";
@@ -166,36 +166,63 @@ dashboardRouter.get("/api/dashboard/consumos", async (c) => {
     whereExtra = `WHERE i.id IN (${sqlInList(allowed)})`;
   }
 
-  const { results } = await c.env.DB.prepare(`
-    SELECT 
-      i.id as instalacionId,
-      i.nombre as instalacionNombre,
-      t.recurso,
-      t.unidad as unidadMedida,
-      COUNT(DISTINCT m.id) as cantidadMedidores,
-      COALESCE(SUM(CASE WHEN t.tipoMedicion = 'ACUMULATIVO' THEN (sub.maxVal - sub.minVal) ELSE 0 END), 0) as consumoNeto
+  const { results: medidores } = await c.env.DB.prepare(`
+    SELECT
+      i.id as instalacionId, i.nombre as instalacionNombre,
+      m.id as medidorId, t.recurso, t.unidad as unidadMedida, t.tipoMedicion
     FROM instalaciones i
     JOIN medidores m ON m.instalacionId = i.id AND m.activo = 1
     JOIN tipos_medidor t ON m.tipoMedidorId = t.id
-    LEFT JOIN (
-      SELECT medidorId, MIN(valor) as minVal, MAX(valor) as maxVal, COUNT(id) as countLec
-      FROM lecturas
-      GROUP BY medidorId
-      HAVING countLec >= 2
-    ) sub ON sub.medidorId = m.id
     ${whereExtra}
-    GROUP BY i.id, t.recurso
-    ORDER BY i.nombre, t.recurso
+    ORDER BY i.nombre, t.recurso LIMIT 500
   `).all<{
-    instalacionId: string;
-    instalacionNombre: string;
-    recurso: string;
-    unidadMedida: string;
-    cantidadMedidores: number;
-    consumoNeto: number;
+    instalacionId: string; instalacionNombre: string; medidorId: string;
+    recurso: string; unidadMedida: string; tipoMedicion: string;
   }>();
 
-  return c.json(results);
+  const { results: stats } = await c.env.DB.prepare(`
+    SELECT medidorId, MIN(valor) as minVal, MAX(valor) as maxVal, AVG(valor) as avgVal, COUNT(id) as n
+    FROM lecturas GROUP BY medidorId
+  `).all<{ medidorId: string; minVal: number | null; maxVal: number | null; avgVal: number | null; n: number }>();
+  const statMap = new Map(stats.map((s) => [s.medidorId, s]));
+
+  const { results: recargas } = await c.env.DB.prepare(`
+    SELECT medidorId, COALESCE(SUM(volumenRecargado), 0) as total
+    FROM registros_mantenimiento WHERE tipo = 'RECARGA_TANQUE' GROUP BY medidorId
+  `).all<{ medidorId: string; total: number }>().catch(() => ({ results: [] as Array<{ medidorId: string; total: number }> }));
+  const recMap = new Map((recargas || []).map((r) => [r.medidorId, r.total || 0]));
+
+  const grupos = new Map<string, { instalacionId: string; instalacionNombre: string; recurso: string; unidadMedida: string; cantidadMedidores: number; consumoNeto: number }>();
+  for (const m of medidores) {
+    const key = `${m.instalacionId}:${m.recurso}`;
+    if (!grupos.has(key)) {
+      grupos.set(key, { instalacionId: m.instalacionId, instalacionNombre: m.instalacionNombre, recurso: m.recurso, unidadMedida: m.unidadMedida, cantidadMedidores: 0, consumoNeto: 0 });
+    }
+    const g = grupos.get(key);
+    if (!g) continue;
+    g.cantidadMedidores += 1;
+    const st = statMap.get(m.medidorId);
+    if (!st || !st.n) continue;
+    if (m.tipoMedicion === "ACUMULATIVO") {
+      if (st.n >= 2 && st.minVal !== null && st.maxVal !== null) g.consumoNeto += Math.max(0, st.maxVal - st.minVal);
+    } else if (m.tipoMedicion === "NIVEL") {
+      const { results: ord } = await c.env.DB.prepare(
+        "SELECT valor FROM lecturas WHERE medidorId = ? ORDER BY fechaLectura ASC LIMIT 100"
+      ).bind(m.medidorId).all<{ valor: number }>();
+      if (ord.length >= 1) {
+        const ini = ord[0].valor;
+        const fin = ord[ord.length - 1].valor;
+        g.consumoNeto += Math.max(0, Number((ini - fin).toFixed(2))) + (recMap.get(m.medidorId) || 0);
+      }
+    } else {
+      // INSTANTANEO / otros: promedio
+      if (st.avgVal !== null) g.consumoNeto += Number(st.avgVal.toFixed(2));
+    }
+  }
+  // Corrección ACUMULATIVO ya sumado; NIVEL con doble conteo evitado: restar aproximación min/max previa (0) — redondear
+  const out = [...grupos.values()].map((g) => ({ ...g, consumoNeto: Number(g.consumoNeto.toFixed(2)) }));
+
+  return c.json(out);
 });
 
 // 4. Actividad reciente de telemetría (últimas lecturas con formato compatible con components.js)

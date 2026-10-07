@@ -2,17 +2,36 @@ import { Hono } from "hono";
 import { z } from "zod";
 import type { Env, Variables } from "../types.js";
 import { sqlInList } from "../db.js";
+import { factorEfectivo, calcularValorReal } from "../domain.js";
 
 export const lecturasRouter = new Hono<{ Bindings: Env; Variables: Variables }>();
+
+const OrigenEnum = z.enum(["MANUAL", "AJUSTE", "IMPORTADA"]);
 
 const LecturaInputSchema = z.object({
   medidorId: z.string().min(1),
   valor: z.number().nonnegative(),
+  origen: OrigenEnum.optional().default("MANUAL"),
   fechaLectura: z.string().optional(),
   timestamp: z.string().optional(),
   notas: z.string().optional(),
   observaciones: z.string().optional(),
 });
+
+function parseFecha(rawDate: string | undefined): string {
+  let fecha = new Date().toISOString();
+  if (rawDate) {
+    let cleaned = String(rawDate).trim();
+    if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/.test(cleaned)) {
+      cleaned = cleaned.replace(" ", "T") + (cleaned.includes("Z") ? "" : "Z");
+    }
+    const d = new Date(cleaned);
+    if (!isNaN(d.getTime())) {
+      fecha = d.toISOString();
+    }
+  }
+  return fecha;
+}
 
 // Listar lecturas recientes
 lecturasRouter.get("/api/lecturas", async (c) => {
@@ -27,8 +46,8 @@ lecturasRouter.get("/api/lecturas", async (c) => {
   }
 
   let sql = `
-    SELECT 
-      l.id, l.valor, l.fechaLectura, l.notas, l.createdAt,
+    SELECT
+      l.id, l.valor, l.valorBruto, l.multiplicadorAplicado, l.origen, l.fechaLectura, l.notas, l.createdAt,
       m.id as medidorId, m.codigo as medidorCodigo,
       t.recurso, t.unidad
     FROM lecturas l
@@ -58,6 +77,9 @@ lecturasRouter.get("/api/lecturas", async (c) => {
   const { results } = await c.env.DB.prepare(sql).all<{
     id: string;
     valor: number;
+    valorBruto: number | null;
+    multiplicadorAplicado: number | null;
+    origen: string | null;
     fechaLectura: string;
     notas: string | null;
     createdAt: string;
@@ -75,6 +97,7 @@ lecturasRouter.get("/api/lecturas", async (c) => {
     }
     return {
       ...r,
+      origen: r.origen || "MANUAL",
       fechaLectura: iso,
       timestamp: iso,
       fecha: iso,
@@ -84,7 +107,7 @@ lecturasRouter.get("/api/lecturas", async (c) => {
   return c.json(formatted);
 });
 
-// Registrar nueva lectura (con verificación de regla inmutable no-decreciente si es acumulativo)
+// Registrar nueva lectura (factor efectivo + cota NIVEL + origen)
 lecturasRouter.post("/api/lecturas", async (c) => {
   const body = await c.req.json();
   const parsed = LecturaInputSchema.safeParse(body);
@@ -92,33 +115,26 @@ lecturasRouter.post("/api/lecturas", async (c) => {
     return c.json({ error: "VALIDATION_ERROR", message: "Datos de lectura inválidos" }, 400);
   }
 
-  const { medidorId, valor } = parsed.data;
+  const { medidorId, valor: valorBrutoInput } = parsed.data;
+  const origen = parsed.data.origen || "MANUAL";
   const rawDate = parsed.data.fechaLectura || parsed.data.timestamp;
-  let fecha = new Date().toISOString();
-  if (rawDate) {
-    let cleaned = String(rawDate).trim();
-    if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/.test(cleaned)) {
-      cleaned = cleaned.replace(" ", "T") + (cleaned.includes("Z") ? "" : "Z");
-    }
-    const d = new Date(cleaned);
-    if (!isNaN(d.getTime())) {
-      fecha = d.toISOString();
-    }
-  }
+  const fecha = parseFecha(rawDate);
   const notas = parsed.data.notas || parsed.data.observaciones || null;
 
-  // 1. Obtener tipo de medición del medidor
   const medidor = await c.env.DB.prepare(`
-    SELECT m.id, m.activo, m.instalacionId, t.tipoMedicion
+    SELECT m.id, m.activo, m.instalacionId, m.factorInstalacion, t.tipoMedicion, t.multiplicador, t.capacidadMaxima
     FROM medidores m
     JOIN tipos_medidor t ON m.tipoMedidorId = t.id
     WHERE m.id = ?
   `)
     .bind(medidorId)
-    .first<{ id: string; activo: number; instalacionId: string; tipoMedicion: string }>();
+    .first<{ id: string; activo: number; instalacionId: string; factorInstalacion: number | null; tipoMedicion: string; multiplicador: number | null; capacidadMaxima: number | null }>();
 
   if (!medidor) {
     return c.json({ error: "NOT_FOUND", message: "Medidor no encontrado" }, 404);
+  }
+  if (!medidor.activo) {
+    return c.json({ error: "MEDIDOR_INACTIVO", message: `El medidor '${medidorId}' se encuentra archivado y no admite lecturas.` }, 422);
   }
 
   const user = c.get("user");
@@ -129,7 +145,19 @@ lecturasRouter.post("/api/lecturas", async (c) => {
     }
   }
 
-  // 2. Si es acumulativo, verificar que el nuevo valor sea >= a la última lectura
+  const efectivo = factorEfectivo(medidor.factorInstalacion, medidor.multiplicador);
+  const valorReal = calcularValorReal(valorBrutoInput, efectivo);
+
+  if (medidor.tipoMedicion === "NIVEL") {
+    const cap = medidor.capacidadMaxima ?? null;
+    if (cap !== null && valorReal > cap) {
+      return c.json({
+        error: "NIVEL_FUERA_DE_RANGO",
+        message: `El nivel ${valorReal} supera la capacidad máxima ${cap}.`,
+      }, 422);
+    }
+  }
+
   if (medidor.tipoMedicion === "ACUMULATIVO") {
     const ultima = await c.env.DB.prepare(
       "SELECT valor FROM lecturas WHERE medidorId = ? ORDER BY fechaLectura DESC LIMIT 1"
@@ -137,10 +165,10 @@ lecturasRouter.post("/api/lecturas", async (c) => {
       .bind(medidorId)
       .first<{ valor: number }>();
 
-    if (ultima && valor < ultima.valor) {
+    if (ultima && valorReal < ultima.valor) {
       return c.json({
         error: "LECTURA_DECRECIENTE_PROHIBIDA",
-        message: `El valor ingresado (${valor}) no puede ser menor a la lectura anterior (${ultima.valor}) para un medidor acumulativo.`,
+        message: `El valor ingresado (${valorReal}) no puede ser menor a la lectura anterior (${ultima.valor}) para un medidor acumulativo.`,
       }, 422);
     }
   }
@@ -149,16 +177,19 @@ lecturasRouter.post("/api/lecturas", async (c) => {
   const operadorId = user ? user.id : (body.operadorId || "usr-oper-01");
 
   await c.env.DB.prepare(`
-    INSERT INTO lecturas (id, medidorId, operadorId, valor, fechaLectura, notas, createdAt)
-    VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+    INSERT INTO lecturas (id, medidorId, operadorId, valor, valorBruto, multiplicadorAplicado, origen, fechaLectura, notas, createdAt)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
   `)
-    .bind(lecturaId, medidorId, operadorId, valor, fecha, notas)
+    .bind(lecturaId, medidorId, operadorId, valorReal, valorBrutoInput, efectivo, origen, fecha, notas)
     .run();
 
   return c.json({
     id: lecturaId,
     medidorId,
-    valor,
+    valor: valorReal,
+    valorBruto: valorBrutoInput,
+    multiplicadorAplicado: efectivo,
+    origen,
     fechaLectura: fecha,
     timestamp: fecha,
     fecha,
@@ -166,12 +197,13 @@ lecturasRouter.post("/api/lecturas", async (c) => {
   }, 201);
 });
 
-// Sincronización en lote offline (SyncManager PWA)
+// Sincronización en lote offline (SyncManager PWA) con origen por ítem
 interface LecturaBatchItem {
   localId?: string;
   medidorId: string;
   operadorId?: string;
   valor: number;
+  origen?: string;
   fechaLectura?: string;
   timestamp?: string;
   notas?: string;
@@ -189,21 +221,41 @@ lecturasRouter.post("/api/lecturas/batch-sync", async (c) => {
     return c.json({ error: "BAD_REQUEST", message: "Formato de lote inválido: debe contener un arreglo de 'lecturas'" }, 400);
   }
 
+  const ordenadas = [...list].sort((a, b) => {
+    const ta = a.fechaLectura || a.timestamp ? new Date(String(a.fechaLectura || a.timestamp)).getTime() : 0;
+    const tb = b.fechaLectura || b.timestamp ? new Date(String(b.fechaLectura || b.timestamp)).getTime() : 0;
+    return ta - tb;
+  });
+
   const results: Array<{ localId?: string; status: "SYNCED" | "REJECTED"; lectura?: Record<string, unknown>; error?: { code?: string; message: string } }> = [];
   let syncedCount = 0;
   let rejectedCount = 0;
 
-  for (const item of list) {
+  for (const item of ordenadas) {
     try {
       const medidor = await c.env.DB.prepare(`
-        SELECT m.id, m.activo, t.tipoMedicion
+        SELECT m.id, m.activo, m.factorInstalacion, t.tipoMedicion, t.multiplicador, t.capacidadMaxima
         FROM medidores m
         JOIN tipos_medidor t ON m.tipoMedidorId = t.id
         WHERE m.id = ?
-      `).bind(item.medidorId).first<{ id: string; activo: number; tipoMedicion: string }>();
+      `).bind(item.medidorId).first<{ id: string; activo: number; factorInstalacion: number | null; tipoMedicion: string; multiplicador: number | null; capacidadMaxima: number | null }>();
 
       if (!medidor) {
         throw new Error(`Medidor con ID '${item.medidorId}' no encontrado`);
+      }
+      if (!medidor.activo) {
+        throw new Error(`Medidor '${item.medidorId}' archivado (MEDIDOR_INACTIVO)`);
+      }
+
+      const efectivo = factorEfectivo(medidor.factorInstalacion, medidor.multiplicador);
+      const valorReal = calcularValorReal(item.valor, efectivo);
+      const origen = item.origen || "MANUAL";
+
+      if (medidor.tipoMedicion === "NIVEL") {
+        const cap = medidor.capacidadMaxima ?? null;
+        if (cap !== null && valorReal > cap) {
+          throw new Error(`Nivel ${valorReal} supera capacidad ${cap} (NIVEL_FUERA_DE_RANGO)`);
+        }
       }
 
       if (medidor.tipoMedicion === "ACUMULATIVO") {
@@ -211,37 +263,30 @@ lecturasRouter.post("/api/lecturas/batch-sync", async (c) => {
           "SELECT valor FROM lecturas WHERE medidorId = ? ORDER BY fechaLectura DESC LIMIT 1"
         ).bind(item.medidorId).first<{ valor: number }>();
 
-        if (ultima && item.valor < ultima.valor) {
-          throw new Error(`Lectura decreciente rechazada: ${item.valor} < ${ultima.valor}`);
+        if (ultima && valorReal < ultima.valor) {
+          throw new Error(`Lectura decreciente rechazada: ${valorReal} < ${ultima.valor}`);
         }
       }
 
       const id = crypto.randomUUID();
       const rawDate = item.fechaLectura || item.timestamp;
-      let fecha = new Date().toISOString();
-      if (rawDate) {
-        let cleaned = String(rawDate).trim();
-        if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/.test(cleaned)) {
-          cleaned = cleaned.replace(" ", "T") + (cleaned.includes("Z") ? "" : "Z");
-        }
-        const d = new Date(cleaned);
-        if (!isNaN(d.getTime())) {
-          fecha = d.toISOString();
-        }
-      }
+      const fecha = parseFecha(rawDate);
       const operadorId = item.operadorId || "usr-oper-01";
       const notas = item.notas || item.observaciones || null;
 
       await c.env.DB.prepare(`
-        INSERT INTO lecturas (id, medidorId, operadorId, valor, fechaLectura, notas, createdAt)
-        VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-      `).bind(id, item.medidorId, operadorId, item.valor, fecha, notas).run();
+        INSERT INTO lecturas (id, medidorId, operadorId, valor, valorBruto, multiplicadorAplicado, origen, fechaLectura, notas, createdAt)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+      `).bind(id, item.medidorId, operadorId, valorReal, item.valor, efectivo, origen, fecha, notas).run();
 
       const lecturaCreada = {
         id,
         medidorId: item.medidorId,
         operadorId,
-        valor: item.valor,
+        valor: valorReal,
+        valorBruto: item.valor,
+        multiplicadorAplicado: efectivo,
+        origen,
         fechaLectura: fecha,
         timestamp: fecha,
         fecha,

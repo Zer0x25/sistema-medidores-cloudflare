@@ -25,6 +25,7 @@ model Usuario {
 
 model Instalacion {
   id           String                   @id @default(uuid())
+  codigo       String?                  @unique
   nombre       String                   @unique
   ubicacion    String
   activa       Boolean                  @default(true)
@@ -51,12 +52,14 @@ model AsignacionOperador {
 }
 
 model TipoMedidor {
-  id           String    @id @default(uuid())
-  nombre       String    @unique
-  recurso      String    // AGUA, LUZ, GAS, PETROLEO, OTRO
-  unidad       String    // LITROS, M3, KWH, PORCENTAJE, OTRO
-  tipoMedicion String    // ACUMULATIVO, INSTANTANEO, NIVEL
-  activo       Boolean   @default(true)
+  id              String    @id @default(uuid())
+  nombre          String    @unique
+  recurso         String    // AGUA, LUZ, GAS, PETROLEO, OTRO
+  unidad          String    // LITROS, M3, KWH, PORCENTAJE, OTRO
+  tipoMedicion    String    // ACUMULATIVO, INSTANTANEO, NIVEL
+  multiplicador   Float     @default(1.0)
+  capacidadMaxima Float?
+  activo          Boolean   @default(true)
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
   medidores    Medidor[]
@@ -69,6 +72,8 @@ model Medidor {
   instalacionId           String
   tipoMedidorId           String
   codigo                  String                  @unique
+  codigoExterno           String?                 @unique
+  factorInstalacion       Float?
   numeroSerie             String?
   ubicacionInterna        String
   activo                  Boolean                 @default(true)
@@ -87,11 +92,14 @@ model Medidor {
 }
 
 model Lectura {
-  id           String    @id @default(uuid())
-  medidorId    String
-  operadorId   String
-  valor        Float
-  fechaLectura DateTime  @default(now())
+  id                   String    @id @default(uuid())
+  medidorId            String
+  operadorId           String
+  valor                Float
+  valorBruto           Float?
+  multiplicadorAplicado Float?
+  origen               String    @default("MANUAL")
+  fechaLectura         DateTime  @default(now())
   notas        String?
   createdAt    DateTime  @default(now())
   medidor      Medidor   @relation(fields: [medidorId], references: [id])
@@ -162,7 +170,7 @@ model IncidenteAlerta {
 model RegistroMantenimiento {
   id                     String    @id @default(uuid())
   medidorId              String
-  tipo                   String    // CALIBRACION, CAMBIO_PRECINTO, REEMPLAZO_EQUIPO, INSPECCION, BAJA_TECNICA
+  tipo                   String    // CALIBRACION, CAMBIO_PRECINTO, REEMPLAZO_EQUIPO, INSPECCION, BAJA_TECNICA, RECARGA_TANQUE
   fechaMantenimiento     DateTime  @default(now())
   tecnicoResponsable     String
   numeroPrecintoAnterior String?
@@ -172,6 +180,8 @@ model RegistroMantenimiento {
   lecturaRetiro          Float?
   motivoBaja             String?
   nuevoMedidorCodigo     String?
+  volumenRecargado       Float?
+  nivelPosterior         Float?
   observaciones          String?
   createdAt              DateTime  @default(now())
   medidor                Medidor   @relation(fields: [medidorId], references: [id])
