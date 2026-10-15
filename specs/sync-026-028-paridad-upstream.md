@@ -98,3 +98,16 @@ Secuencia: Quality Gate, respaldo remoto privado fuera del repo, commit/push,
 únicamente migración aditiva 0004, despliegue y verificación remota de lectura.
 No ejecutar seed ni suites remotas que creen entidades. Preservar la configuración
 remota y los cuatro commits previos. Registrar versión y evidencia en STATE.
+
+### Cierre de publicación
+- Código `b0210b56625bc165b88434747df04818ffdafd54` publicado en origin/main.
+- Respaldo D1 remoto exportado a almacenamiento privado externo, validado con
+  SQLite integrity_check y protegido con permisos 0600.
+- Migración 0004 aplicada; no hay migraciones remotas pendientes; conteos de seis
+  tablas conservados exactamente durante la migración.
+- Worker publicado: `274c7e4e-30bf-47dd-b18f-60774368a6eb`, tag `b0210b5`.
+- Probes/config 200, 7 assets idénticos, autenticación por los tres roles,
+  401 anónimo, 403 OPERADOR y filtrado territorial SUPERVISOR correctos.
+- Navegador real en producción: login, controles de entorno y tres canvas a
+  320/1440 px sin overflow ni errores de diagnóstico.
+- No se ejecutaron seed, reset ni suites mutantes de negocio contra producción.

@@ -4,7 +4,7 @@ Este archivo actúa como memoria persistente y tablero de control para humanos y
 
 ---
 
-## 🧭 Fase Actual: Publicación autorizada de feat-026 a feat-028 en curso
+## 🧭 Fase Actual: feat-026 a feat-028 publicadas y verificadas en Cloudflare
 
 - **Proyecto:** `sistema-medidores-cloudflare` (Workers + Hono + D1 + KV + Static Assets).
 - **Estado local:** Paridad funcional con upstream `cdd9d82` para gestión de tipos,
@@ -20,11 +20,22 @@ Este archivo actúa como memoria persistente y tablero de control para humanos y
   errores en los buffers de diagnóstico. Modo production local: login visible,
   demo/simulador ocultos y seed 403 antes de acceder a D1.
 - **Empaquetado:** `wrangler deploy --dry-run` salida 0; no acredita despliegue remoto.
-- **Publicación:** Commit/push y despliegue autorizados por el usuario el 2026-10-14.
-  Gate repetido: salida 0 (73/73). Cuenta, bindings y configuración contrastados
-  con Cloudflare; producción previa `42d45807-f77e-40b7-81f7-111e23b46af7`.
-  D1 solo tiene pendiente `0004_indices_tipos_series.sql`; publicación en curso.
-  Los cuatro commits preexistentes se conservan en la misma historia.
+- **Publicación (2026-10-14):** Commit de código `b0210b56625bc165b88434747df04818ffdafd54`
+  publicado en `origin/main`, incluyendo los cuatro commits preexistentes sin reescritura.
+  Worker `sistema-medidores-edge`, dominio `https://metric.zer0x.org`, versión
+  **`274c7e4e-30bf-47dd-b18f-60774368a6eb`**, etiqueta `b0210b5`.
+- **D1 remota:** Respaldo SQL privado validado (`integrity_check: ok`, permisos 0600);
+  migración aditiva `0004_indices_tipos_series.sql` aplicada y ninguna pendiente.
+  Conteos conservados antes/después de migrar: 25 lecturas, 23 medidores, 21 tipos,
+  18 instalaciones, 11 usuarios y 126 eventos de auditoría (antes de los logins de verificación).
+- **Verificación remota:** `/healthz`, `/readyz` y `/api/config` 200; entorno production
+  y simulador deshabilitado; 7 assets coinciden byte a byte con el código local.
+  Sin sesión: series/tipos 401; ADMIN/SUPERVISOR: series y tipos 200 con filtros y scope;
+  OPERADOR: dashboard 403. Login real y dashboard a 320/1440 px: sin overflow,
+  tres gráficos dibujados y cero errores en buffers de diagnóstico.
+  No se ejecutaron seed ni pruebas de escritura de negocio en producción.
+- **Versión previa para trazabilidad:** `42d45807-f77e-40b7-81f7-111e23b46af7`.
+  SHA256 del respaldo: `2b7f9994a3fb6eede446dba4b7256a1a9a063b0498c7b9ecf5eb8b9f2fc7b6a2`.
 - **Pendiente de seguridad preexistente:** `JWT_SECRET` figura como variable de texto
   en configuración versionada y remota. Migrarlo a secreto protegido y rotarlo
   requiere una intervención específica que invalida las sesiones activas.
@@ -74,14 +85,15 @@ Este registro almacena los hitos o funcionalidades cerradas en el repo padre que
 - [x] **Hito 15.5 / feat-023 (Módulo Parque):** Sincronizado (2026-10-07). Frontend `public/` alineado a upstream (`viewParque #/parque`, `nav-parque`, `seccionGestionParque`, modales edición, `ApiClient` archivar/restaurar/eliminar).
 - [x] **Hito 15.6 / feat-024 (Tipos con Factor + Recargas):** Sincronizado (2026-10-07). `tipos_medidor.multiplicador/capacidadMaxima`, `lecturas.valorBruto/multiplicadorAplicado`, `RECARGA_TANQUE` + `volumenRecargado/nivelPosterior` (400/422 tipados), consumos por modo en dashboard/reportes, alertas SALTO/FUGA solo ACUMULATIVO, seed diésel 5000 L.
 - [x] **Hito 15.7 / feat-025 (OBIS/Origen/Factor por Activo):** Sincronizado (2026-10-07). `medidores.codigoExterno` único (409) + `factorInstalacion` override (efectivo = instalación ?? tipo ?? 1), `lecturas.origen` MANUAL/AJUSTE/IMPORTADA propagado en batch-sync.
-- [x] **feat-026 (local, 2026-10-14):** Tipos editables/archivables/eliminables solo sin
+- [x] **feat-026 (producción, 2026-10-14):** Tipos editables/archivables/eliminables solo sin
   medidores asociados, reasignación validada y auditoría transaccional con snapshot/IP.
-- [x] **feat-027 (local, 2026-10-14):** Demo y simulador solo development/test; seed bloqueado
+- [x] **feat-027 (producción, 2026-10-14):** Demo y simulador solo development/test; seed bloqueado
   fuera de esos entornos; auditoría histórica preservada; salud real y SW sin probes cacheados.
-- [x] **feat-028 (local, 2026-10-14):** Series indexadas y acotadas en D1, filtros AND,
+- [x] **feat-028 (producción, 2026-10-14):** Series indexadas y acotadas en D1, filtros AND,
   fechas SQLite/ISO normalizadas, scope territorial fail-closed, 401/403 y tres gráficos.
-- [ ] **Publicación de feat-026/027/028:** Autorizada; respaldo, commit/push, migración
-  0004 y despliegue en curso en este repo, independientemente del padre.
+- [x] **Publicación de feat-026/027/028 (2026-10-14):** Código `b0210b5` en GitHub;
+  respaldo verificado, migración 0004 remota aplicada, versión `274c7e4e` activa;
+  verificaciones HTTP/RBAC/assets y navegador reales superadas. Repo padre intacto.
 - [ ] *(Pendiente)*: Cuando se completen nuevos hitos en el repo padre (ej: Hito 16), anótalos aquí con sus rutas, tablas e invariantes antes de iniciar la sesión de migración.
 
 ---
