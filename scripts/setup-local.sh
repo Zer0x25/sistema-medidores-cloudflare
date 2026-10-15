@@ -33,22 +33,7 @@ npm install
 
 # 3. Configuración de .dev.vars si no existe
 echo -e "\n${BLUE}--> [3/6] Configurando variables de entorno locales...${NC}"
-if [ ! -f ".dev.vars" ]; then
-  if [ -f ".dev.vars.example" ]; then
-    cp .dev.vars.example .dev.vars
-    echo -e "${GREEN}✓ Archivo .dev.vars inicializado desde .dev.vars.example.${NC}"
-  else
-    cat <<EOF > .dev.vars
-JWT_SECRET=desarrollo_local_jwt_secret_minimo_32_caracteres_cloudflare
-JWT_EXPIRES_IN=8h
-NODE_ENV=development
-LOG_LEVEL=debug
-EOF
-    echo -e "${GREEN}✓ Archivo .dev.vars creado con valores seguros de desarrollo.${NC}"
-  fi
-else
-  echo -e "${GREEN}✓ Archivo .dev.vars ya existe.${NC}"
-fi
+node scripts/create-local-secrets.mjs
 
 # 4. Generación de tipos Prisma y Wrangler
 echo -e "\n${BLUE}--> [4/6] Sincronizando artefactos tipados (Prisma & Wrangler)...${NC}"

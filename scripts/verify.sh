@@ -20,10 +20,7 @@ echo -e "${BLUE}   QUALITY GATE DETERMINISTA — CLOUDFLARE WORKERS    ${NC}"
 echo -e "${BLUE}======================================================${NC}"
 
 # 1. Asegurar variables locales (.dev.vars)
-if [ ! -f ".dev.vars" ] && [ -f ".dev.vars.example" ]; then
-  echo -e "${YELLOW}[CONFIG] No se detectó .dev.vars. Creando .dev.vars desde .dev.vars.example...${NC}"
-  cp .dev.vars.example .dev.vars
-fi
+node scripts/create-local-secrets.mjs
 
 # 2. Generar tipos de Prisma y Cloudflare Worker Bindings
 echo -e "\n${BLUE}--> [Paso 1/4] Sincronización de Artefactos Tipados (Prisma & Wrangler)...${NC}"

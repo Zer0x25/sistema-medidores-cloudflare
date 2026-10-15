@@ -1,12 +1,12 @@
 # ==============================================================================
 # VARIABLES Y SECRETOS DE DESARROLLO LOCAL (Wrangler .dev.vars)
 # ==============================================================================
-# Copia este archivo a .dev.vars para desarrollo local con wrangler dev.
-# En producción, estas variables se gestionan vía wrangler secret put o wrangler.jsonc
+# Generar .dev.vars con: node scripts/create-local-secrets.mjs
+# Producción: JWT_SECRET solo como secreto protegido de Cloudflare.
 # ==============================================================================
 
 # Clave secreta para firma y verificación de JWT (mínimo 32 caracteres)
-JWT_SECRET=desarrollo_local_jwt_secret_minimo_32_caracteres_cloudflare
+JWT_SECRET=REEMPLAZAR_CON_CLAVE_LOCAL_ALEATORIA
 
 # Tiempo de vida de los tokens JWT
 JWT_EXPIRES_IN=8h

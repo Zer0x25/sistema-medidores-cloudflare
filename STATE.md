@@ -4,15 +4,16 @@ Este archivo actúa como memoria persistente y tablero de control para humanos y
 
 ---
 
-## 🧭 Fase Actual: feat-026 a feat-028 publicadas y verificadas en Cloudflare
+## 🧭 Fase Actual: Rotación protegida de JWT_SECRET en curso
 
 - **Proyecto:** `sistema-medidores-cloudflare` (Workers + Hono + D1 + KV + Static Assets).
 - **Estado local:** Paridad funcional con upstream `cdd9d82` para gestión de tipos,
   reasignación, demo solo en desarrollo, salud real y gráficos del dashboard.
-- **Spec activo:** `specs/sync-026-028-paridad-upstream.md`.
+- **Spec activo:** `specs/security-001-rotacion-jwt-secret.md`.
 - **Quality Gate (2026-10-14):** `./scripts/verify.sh` salida 0; tipos y lint limpios,
-  **73/73 pruebas** (31 nuevas con SQLite real). Fase roja inicial: 24 fallos por
-  funciones/guardias ausentes; prueba adicional de seedData falló antes de implementarse.
+  **77/77 pruebas** (4 adicionales de custodia/rotación JWT). Fase roja de seguridad:
+  3 fallos de configuración/aprovisionamiento antes de implementar; 4/4 en verde.
+  La evidencia de sincronización previa se conserva en su especificación.
 - **Runtime local:** Migraciones 0001–0004 aplicadas mediante Wrangler con persistencia
   temporal aislada; prueba de simetría y `scripts/test-sync-026-028.mjs` superadas.
 - **Navegador:** **7/7 E2E upstream** ejecutados contra Wrangler local (gráficos 2,
@@ -36,9 +37,10 @@ Este archivo actúa como memoria persistente y tablero de control para humanos y
   No se ejecutaron seed ni pruebas de escritura de negocio en producción.
 - **Versión previa para trazabilidad:** `42d45807-f77e-40b7-81f7-111e23b46af7`.
   SHA256 del respaldo: `2b7f9994a3fb6eede446dba4b7256a1a9a063b0498c7b9ecf5eb8b9f2fc7b6a2`.
-- **Pendiente de seguridad preexistente:** `JWT_SECRET` figura como variable de texto
-  en configuración versionada y remota. Migrarlo a secreto protegido y rotarlo
-  requiere una intervención específica que invalida las sesiones activas.
+- **Corrección de seguridad autorizada (en curso):** Clave anterior retirada de
+  Wrangler, plantilla y bootstrap; generación local aleatoria con permisos 0600.
+  Gate 77/77 y empaquetado validados. Pendiente publicar y verificar la rotación
+  atómica del binding productivo a secret_text; sesiones previas serán invalidadas.
 
 ---
 
