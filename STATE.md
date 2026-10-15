@@ -4,7 +4,7 @@ Este archivo actúa como memoria persistente y tablero de control para humanos y
 
 ---
 
-## 🧭 Fase Actual: Rotación protegida de JWT_SECRET en curso
+## 🧭 Fase Actual: Pendiente JWT_SECRET cerrado y verificado en producción
 
 - **Proyecto:** `sistema-medidores-cloudflare` (Workers + Hono + D1 + KV + Static Assets).
 - **Estado local:** Paridad funcional con upstream `cdd9d82` para gestión de tipos,
@@ -24,7 +24,8 @@ Este archivo actúa como memoria persistente y tablero de control para humanos y
 - **Publicación (2026-10-14):** Commit de código `b0210b56625bc165b88434747df04818ffdafd54`
   publicado en `origin/main`, incluyendo los cuatro commits preexistentes sin reescritura.
   Worker `sistema-medidores-edge`, dominio `https://metric.zer0x.org`, versión
-  **`274c7e4e-30bf-47dd-b18f-60774368a6eb`**, etiqueta `b0210b5`.
+  `274c7e4e-30bf-47dd-b18f-60774368a6eb`, etiqueta `b0210b5` (versión de
+  sincronización previa a la rotación JWT detallada a continuación).
 - **D1 remota:** Respaldo SQL privado validado (`integrity_check: ok`, permisos 0600);
   migración aditiva `0004_indices_tipos_series.sql` aplicada y ninguna pendiente.
   Conteos conservados antes/después de migrar: 25 lecturas, 23 medidores, 21 tipos,
@@ -37,10 +38,18 @@ Este archivo actúa como memoria persistente y tablero de control para humanos y
   No se ejecutaron seed ni pruebas de escritura de negocio en producción.
 - **Versión previa para trazabilidad:** `42d45807-f77e-40b7-81f7-111e23b46af7`.
   SHA256 del respaldo: `2b7f9994a3fb6eede446dba4b7256a1a9a063b0498c7b9ecf5eb8b9f2fc7b6a2`.
-- **Corrección de seguridad autorizada (en curso):** Clave anterior retirada de
-  Wrangler, plantilla y bootstrap; generación local aleatoria con permisos 0600.
-  Gate 77/77 y empaquetado validados. Pendiente publicar y verificar la rotación
-  atómica del binding productivo a secret_text; sesiones previas serán invalidadas.
+- **Pendiente de seguridad CERRADO (2026-10-14):** JWT_SECRET retirado de Wrangler,
+  plantilla y bootstrap. La clave de producción se rotó a un secreto protegido
+  (`secret_text`) de Cloudflare mediante despliegue atómico con `--secrets-file`.
+  Código `6a92c83`, versión activa **`625641b5-39ff-484f-b694-13a33d74df9c`**.
+  Sesión previa comprobada: 200 antes de rotar → 401 UNAUTHORIZED después.
+  Login nuevo 200, firma validada con la nueva clave y consulta privada 200.
+  `/healthz`, `/readyz`, `/api/config` 200; D1 y variables restantes preservados.
+  Archivos temporales sensibles eliminados; nueva clave no presente en Git ni logs.
+  La clave antigua conservada en historia Git está retirada e inválida.
+- **Desarrollo local:** Cada instalación nueva genera su propia clave aleatoria
+  independiente (48 bytes, archivo 0600). Bootstrap y gate conservan archivos
+  locales existentes. Clave de esta máquina también renovada e ignorada en Git.
 
 ---
 

@@ -41,3 +41,19 @@ repo padre, D1/KV/datos de negocio e historia Git existente.
 - Quality Gate completo, empaquetado dry-run y comprobación de archivos versionados.
 - Remoto: binding secret_text (sin exponer valor), probes 200, token anterior 401,
   login/token nuevos válidos, repo limpio y sincronizado al terminar.
+
+## Evidencia de cierre (2026-10-14)
+- Fase roja: 3 fallos y 1 acierto; fase verde: 4/4 pruebas específicas.
+- Quality Gate completo: 77/77, tipos y lint limpios, salida 0.
+- Tipos Wrangler regenerados: JWT_SECRET string, sin valor literal; sin cambios
+  necesarios en el archivo generado. Shell syntax y deploy dry-run correctos.
+- Valor retirado ausente de los archivos versionados actuales, incluidas plantilla
+  y bootstrap. Cada instalación local genera una clave privada independiente.
+- Código `6a92c83` publicado; despliegue `625641b5-39ff-484f-b694-13a33d74df9c`
+  en `metric.zer0x.org`, secreto enviado junto con configuración.
+- Cloudflare settings y secret list confirman JWT_SECRET secret_text sin valor legible.
+- Token válido antes (200) rechazado después con 401 UNAUTHORIZED; login nuevo 200,
+  firma comprobada con la clave nueva y acceso privado 200. Probes/config 200.
+- D1 y variables restantes conservados; sin cambios de datos de negocio.
+- Clave temporal y token previo eliminados; logs comprobados y nueva clave ausente
+  de archivos versionados. Historia Git existente preservada con clave antigua revocada.
