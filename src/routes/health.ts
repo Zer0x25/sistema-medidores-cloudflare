@@ -54,11 +54,11 @@ healthRouter.on(["GET", "POST"], "/api/health", async (c) => {
 
 // Configuración pública de entorno y feature flags (ADR 0012)
 healthRouter.get("/api/config", (c) => {
-  const env = c.env.NODE_ENV || "development";
+  const env = c.env.NODE_ENV || "production";
   return c.json({
     env,
     features: {
-      devRoleSwitcher: env !== "production",
+      devRoleSwitcher: env === "development" || env === "test",
     },
   });
 });

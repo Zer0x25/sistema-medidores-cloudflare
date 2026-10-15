@@ -1,5 +1,7 @@
 import { Hono } from "hono";
 import type { Env, Variables } from "../types.js";
+import { DashboardSerieQuerySchema, DashboardSerieSchema, SyncError, type DashboardSerie } from "../schemas/sync.schema.js";
+import { normalizarFechaISO } from "../domain.js";
 import { sqlInList } from "../db.js";
 
 export const dashboardRouter = new Hono<{ Bindings: Env; Variables: Variables }>();
@@ -311,4 +313,66 @@ dashboardRouter.get("/api/dashboard/actividad-reciente", async (c) => {
 });
 
   return c.json(formatted);
+});
+
+// Series acotadas por medidor: filtros y LIMIT se ejecutan en D1.
+dashboardRouter.get("/api/dashboard/series", async (c) => {
+  const user = c.get("user");
+  if (!user) return c.json({ error: "UNAUTHORIZED", message: "Se requiere una sesión válida" }, 401);
+  if (user.rol === "OPERADOR") return c.json({ error: "FORBIDDEN", message: "Permisos insuficientes" }, 403);
+  const parsed = DashboardSerieQuerySchema.safeParse(c.req.query());
+  if (!parsed.success) return c.json({ error: "VALIDATION_ERROR", message: "Parámetros de serie inválidos", details: parsed.error.format() }, 400);
+  const query = parsed.data;
+  if (query.fechaInicio && query.fechaFin && query.fechaInicio > query.fechaFin) {
+    return c.json({ error: SyncError.rangoInvalido, message: "La fecha inicial es posterior a la final" }, 400);
+  }
+  const allowed = user.rol === "ADMIN" ? undefined : user.allowedInstalacionIds ?? [];
+  if (query.instalacionId && allowed !== undefined && !allowed.includes(query.instalacionId)) {
+    return c.json({ error: SyncError.instalacionAjena, message: "Instalación no asignada" }, 403);
+  }
+  if (allowed?.length === 0) return c.json([]);
+  const conditions = ["m.activo = 1"];
+  const params: string[] = [];
+  if (allowed !== undefined) conditions.push(`m.instalacionId IN (${sqlInList(allowed)})`);
+  for (const [column, value] of [
+    ["m.id", query.medidorId], ["m.instalacionId", query.instalacionId], ["t.recurso", query.recurso],
+  ]) {
+    if (value !== undefined) { conditions.push(`${column} = ?`); params.push(value); }
+  }
+  const { results: medidores } = await c.env.DB.prepare(`
+    SELECT m.id as medidorId, m.codigo as medidorCodigo,
+      i.id as instalacionId, i.nombre as instalacionNombre, t.recurso, t.unidad
+    FROM medidores m
+    JOIN instalaciones i ON i.id = m.instalacionId
+    JOIN tipos_medidor t ON t.id = m.tipoMedidorId
+    WHERE ${conditions.join(" AND ")}
+    ORDER BY m.instalacionId, m.id LIMIT 100
+  `).bind(...params).all<Omit<DashboardSerie, "puntos">>();
+  const series: DashboardSerie[] = [];
+  for (let offset = 0; offset < medidores.length; offset += 25) {
+    const group = medidores.slice(offset, offset + 25);
+    const statements = group.map((m) => {
+      const bounds = ["medidorId = ?"];
+      const values: Array<string | number> = [m.medidorId];
+      if (query.fechaInicio) {
+        bounds.push("julianday(fechaLectura) >= julianday(?)"); values.push(query.fechaInicio.toISOString());
+      }
+      if (query.fechaFin) {
+        bounds.push("julianday(fechaLectura) <= julianday(?)"); values.push(query.fechaFin.toISOString());
+      }
+      values.push(query.limite);
+      return c.env.DB.prepare(`SELECT fechaLectura, valor FROM lecturas
+        WHERE ${bounds.join(" AND ")}
+        ORDER BY julianday(fechaLectura) DESC, valor DESC LIMIT ?`).bind(...values);
+    });
+    const results = await c.env.DB.batch<{ fechaLectura: string; valor: number }>(statements);
+    for (let idx = 0; idx < group.length; idx++) {
+      series.push(DashboardSerieSchema.parse({ ...group[idx],
+        puntos: results[idx].results.slice().reverse().map((p) => ({
+          fecha: new Date(normalizarFechaISO(p.fechaLectura) || p.fechaLectura).toISOString(), valor: p.valor,
+        })),
+      }));
+    }
+  }
+  return c.json(series);
 });

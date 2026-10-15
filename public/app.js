@@ -34,15 +34,21 @@ async function cargarConfiguracionSistema() {
   const roleSimulatorBar = document.getElementById("roleSimulatorBar");
   const mobileSimulatorSection = document.querySelector(".mobile-simulator-section");
   const loginDevBox = document.getElementById("loginDevQuickAccess");
+  const btnSeedDemo = document.getElementById("btnSeedDemo");
+  const btnSeedDemoMobile = document.getElementById("btnSeedDemoMobile");
 
   if (!systemConfig.features?.devRoleSwitcher) {
     if (roleSimulatorBar) roleSimulatorBar.style.display = "none";
     if (mobileSimulatorSection) mobileSimulatorSection.style.display = "none";
     if (loginDevBox) loginDevBox.style.display = "none";
+    if (btnSeedDemo) btnSeedDemo.style.display = "none";
+    if (btnSeedDemoMobile) btnSeedDemoMobile.style.display = "none";
   } else {
     if (roleSimulatorBar) roleSimulatorBar.style.display = "";
     if (mobileSimulatorSection) mobileSimulatorSection.style.display = "";
     if (loginDevBox) loginDevBox.style.display = "block";
+    if (btnSeedDemo) btnSeedDemo.style.display = "";
+    if (btnSeedDemoMobile) btnSeedDemoMobile.style.display = "";
   }
 }
 
@@ -707,6 +713,13 @@ async function cargarDashboard() {
         .map((lec) => window.Components.createActivityItem(lec))
         .join("");
     }
+
+    // 5. Gráficos (feat-028): no bloquea el resto si falla
+    try {
+      await cargarGraficosDashboard({ kpis, consumos });
+    } catch (gErr) {
+      console.error("Error al cargar gráficos:", gErr);
+    }
   } catch (err) {
     console.error("Error al cargar dashboard:", err);
     window.Toast.error(err.message, "Fallo al sincronizar Dashboard");
@@ -719,6 +732,87 @@ async function cargarDashboard() {
       );
     }
   }
+}
+
+/**
+ * Carga los 3 gráficos del dashboard (feat-028, Canvas 2D nativo).
+ * Termina en silencio si el usuario es OPERADOR o si no hay canvas.
+ */
+async function poblarFiltrosGraficos() {
+  const selInst = document.getElementById("filtroGraficoInstalacion");
+  const selMed = document.getElementById("filtroGraficoMedidor");
+  if (!selInst && !selMed) return;
+  try {
+    const instalaciones = await window.api.instalaciones.getAll();
+    if (selInst) {
+      const prev = selInst.value;
+      selInst.innerHTML = '<option value="">Todas las sedes</option>';
+      instalaciones.forEach((i) => {
+        const opt = document.createElement("option");
+        opt.value = i.id;
+        opt.textContent = i.nombre;
+        selInst.appendChild(opt);
+      });
+      if (prev) selInst.value = prev;
+    }
+    const medidores = await window.api.medidores.getAll();
+    if (selMed) {
+      const prevM = selMed.value;
+      const filtroInst = selInst ? selInst.value : "";
+      selMed.innerHTML = '<option value="">Todos los medidores</option>';
+      medidores
+        .filter((m) => !filtroInst || (m.instalacionId === filtroInst || m.instalacion?.id === filtroInst))
+        .slice(0, 200)
+        .forEach((m) => {
+          const opt = document.createElement("option");
+          opt.value = m.id;
+          opt.textContent = `${m.codigo} (${(m.tipoMedidor && m.tipoMedidor.recurso) || ""})`;
+          selMed.appendChild(opt);
+        });
+      if (prevM) selMed.value = prevM;
+    }
+  } catch (err) {
+    console.error("Error al poblar filtros de gráficos:", err);
+  }
+}
+
+async function cargarGraficosDashboard(datosBase) {
+  const cLinea = document.getElementById("chartEvolucionMedidor");
+  const cBarras = document.getElementById("chartConsumoInstalacion");
+  const cDona = document.getElementById("chartDistribucionRecurso");
+  if (!cLinea && !cBarras && !cDona) return;
+  if (!window.Charts) return;
+
+  const selInst = document.getElementById("filtroGraficoInstalacion");
+  const selMed = document.getElementById("filtroGraficoMedidor");
+  const selRec = document.getElementById("filtroGraficoRecurso");
+  const inpDesde = document.getElementById("filtroGraficoDesde");
+  const inpHasta = document.getElementById("filtroGraficoHasta");
+
+  // Poblar selects la primera vez (conserva selección)
+  if (selInst && selInst.options.length <= 1) {
+    await poblarFiltrosGraficos();
+  }
+
+  const params = { limite: 100 };
+  if (selInst && selInst.value) params.instalacionId = selInst.value;
+  if (selMed && selMed.value) params.medidorId = selMed.value;
+  if (selRec && selRec.value) params.recurso = selRec.value;
+  if (inpDesde && inpDesde.value) params.fechaInicio = inpDesde.value;
+  if (inpHasta && inpHasta.value) params.fechaFin = inpHasta.value;
+
+  const [series, kpis, consumos] = await Promise.all([
+    window.api.dashboard.getSeries(params),
+    datosBase && datosBase.kpis ? datosBase.kpis : window.api.dashboard.getKpis(),
+    datosBase && datosBase.consumos ? datosBase.consumos : window.api.dashboard.getConsumos(),
+  ]);
+
+  window.Charts.dibujarLinea(cLinea, series);
+  window.Charts.dibujarBarras(cBarras, consumos);
+  const dist = kpis && kpis.medidoresPorRecurso
+    ? Object.entries(kpis.medidoresPorRecurso).map(([clave, valor]) => ({ clave, valor }))
+    : [];
+  window.Charts.dibujarDona(cDona, dist);
 }
 
 // ------------------------------------------------------------------------------
@@ -1061,10 +1155,19 @@ async function submitNuevoMedidor(event) {
 // 7. UTILIDAD DEMO & SEED
 // ------------------------------------------------------------------------------
 async function seedDemoData() {
+  // Defensa en profundidad: demo solo en dev (feat-027). El backend además responde 403 fuera de dev.
+  if (!systemConfig.features?.devRoleSwitcher) {
+    if (window.Toast) {
+      window.Toast.warning("La carga de datos demo solo está disponible en modo desarrollo.", "No disponible");
+    }
+    return;
+  }
   const btn = document.getElementById("btnSeedDemo");
-  const originalHtml = btn.innerHTML;
-  btn.disabled = true;
-  btn.innerHTML = "Poblando base de datos...";
+  const originalHtml = btn ? btn.innerHTML : "";
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = "Poblando base de datos...";
+  }
 
   try {
     const result = await window.api.demo.seed();
@@ -1082,8 +1185,10 @@ async function seedDemoData() {
   } catch (err) {
     window.Toast.error(err.message, "Error al cargar demo");
   } finally {
-    btn.disabled = false;
-    btn.innerHTML = originalHtml;
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = originalHtml;
+    }
   }
 }
 
@@ -2524,19 +2629,25 @@ function setParqueTab(tab) {
   parqueVistaActual = tab;
   const btnInst = document.getElementById("btnParqueTabInstalaciones");
   const btnMed = document.getElementById("btnParqueTabMedidores");
+  const btnTipos = document.getElementById("btnParqueTabTipos");
   const contInst = document.getElementById("contenedorTablaInstalaciones");
   const contMed = document.getElementById("contenedorTablaMedidores");
+  const contTipos = document.getElementById("contenedorTablaTipos");
 
-  if (tab === "instalaciones") {
-    btnInst?.classList.add("active");
-    btnMed?.classList.remove("active");
-    if (contInst) contInst.style.display = "";
-    if (contMed) contMed.style.display = "none";
-  } else {
+  [btnInst, btnMed, btnTipos].forEach((b) => b?.classList.remove("active"));
+  if (contInst) contInst.style.display = "none";
+  if (contMed) contMed.style.display = "none";
+  if (contTipos) contTipos.style.display = "none";
+
+  if (tab === "medidores") {
     btnMed?.classList.add("active");
-    btnInst?.classList.remove("active");
     if (contMed) contMed.style.display = "";
-    if (contInst) contInst.style.display = "none";
+  } else if (tab === "tipos") {
+    btnTipos?.classList.add("active");
+    if (contTipos) contTipos.style.display = "";
+  } else {
+    btnInst?.classList.add("active");
+    if (contInst) contInst.style.display = "";
   }
 }
 
@@ -2548,6 +2659,7 @@ async function cambiarFiltroParqueEstado(estado) {
 async function cargarParqueAdmin() {
   const tbodyInst = document.getElementById("tbodyGestionInstalaciones");
   const tbodyMed = document.getElementById("tbodyGestionMedidores");
+  const tbodyTipos = document.getElementById("tbodyGestionTipos");
 
   try {
     if (tbodyInst) {
@@ -2556,6 +2668,9 @@ async function cargarParqueAdmin() {
     if (tbodyMed) {
       tbodyMed.innerHTML = '<tr><td colspan="8" class="empty-state">Cargando medidores...</td></tr>';
     }
+    if (tbodyTipos) {
+      tbodyTipos.innerHTML = '<tr><td colspan="8" class="empty-state">Cargando tipos...</td></tr>';
+    }
 
     const medEstado =
       parqueEstadoActual === "activas"
@@ -2563,14 +2678,22 @@ async function cargarParqueAdmin() {
         : parqueEstadoActual === "archivadas"
         ? "archivados"
         : "todos";
+    const tipoEstado =
+      parqueEstadoActual === "activas"
+        ? "activos"
+        : parqueEstadoActual === "archivadas"
+        ? "archivados"
+        : "todos";
 
-    const [instalaciones, medidores] = await Promise.all([
+    const [instalaciones, medidores, tipos] = await Promise.all([
       window.api.instalaciones.getAll(parqueEstadoActual),
       window.api.medidores.getAll(medEstado),
+      window.api.medidores.getTipos(tipoEstado).catch(() => tiposMedidorCache),
     ]);
 
     cacheInstalacionesParque = instalaciones;
     cacheMedidoresParque = medidores;
+    tiposMedidorCache = Array.isArray(tipos) ? tipos : tiposMedidorCache;
 
     // Renderizar Instalaciones
     if (tbodyInst) {
@@ -2587,6 +2710,31 @@ async function cargarParqueAdmin() {
         tbodyMed.innerHTML = '<tr><td colspan="8" class="empty-state">No hay medidores en este estado.</td></tr>';
       } else {
         tbodyMed.innerHTML = medidores.map((med) => window.Components.createMedidorRow(med)).join("");
+      }
+    }
+
+    // Renderizar Tipos (feat-026)
+    if (tbodyTipos) {
+      if (tiposMedidorCache.length === 0) {
+        tbodyTipos.innerHTML = '<tr><td colspan="8" class="empty-state">No hay tipos en este estado.</td></tr>';
+      } else {
+        tbodyTipos.innerHTML = tiposMedidorCache.map((t) => `
+          <tr data-tipo-id="${t.id}">
+            <td data-label="Nombre"><strong>${t.nombre}</strong></td>
+            <td data-label="Recurso">${t.recurso}</td>
+            <td data-label="Unidad">${t.unidadMedida || t.unidad || "-"}</td>
+            <td data-label="Modo">${t.tipoMedicion}</td>
+            <td data-label="Factor" class="font-mono">×${t.multiplicador ?? 1}</td>
+            <td data-label="Capacidad Máx." class="font-mono">${t.capacidadMaxima ?? "—"}</td>
+            <td data-label="Estado">${t.activo ? '<span class="badge badge-green">Activo</span>' : '<span class="badge badge-muted">Archivado</span>'}</td>
+            <td data-label="Acciones" class="table-actions" style="text-align: right;">
+              <button class="btn btn-ghost btn-sm" data-testid="btn-editar-tipo-${t.id}" onclick="abrirModalEditarTipo('${t.id}')">Editar</button>
+              ${t.activo
+                ? `<button class="btn btn-ghost btn-sm" data-testid="btn-archivar-tipo-${t.id}" onclick="archivarTipo('${t.id}')">Archivar</button>`
+                : `<button class="btn btn-ghost btn-sm" data-testid="btn-restaurar-tipo-${t.id}" onclick="restaurarTipo('${t.id}')">Restaurar</button>`}
+              <button class="btn btn-ghost btn-sm text-danger" data-testid="btn-eliminar-tipo-${t.id}" onclick="eliminarTipoFisico('${t.id}')">Eliminar</button>
+            </td>
+          </tr>`).join("");
       }
     }
   } catch (err) {
@@ -2718,6 +2866,19 @@ async function abrirModalEditarMedidor(id) {
   document.getElementById("inputEditarMedidorFactor").value =
     medidor.factorInstalacion !== undefined && medidor.factorInstalacion !== null ? String(medidor.factorInstalacion) : "";
 
+  const selTipoReasig = document.getElementById("selectEditarMedidorTipo");
+  if (selTipoReasig) {
+    if (tiposMedidorCache.length === 0) {
+      try {
+        tiposMedidorCache = await window.api.medidores.getTipos("activos");
+      } catch (_) { /* conserva caché */ }
+    }
+    selTipoReasig.innerHTML = tiposMedidorCache
+      .map((t) => `<option value="${t.id}">${t.nombre} (${t.recurso})</option>`)
+      .join("");
+    selTipoReasig.value = medidor.tipoMedidorId || "";
+  }
+
   const badge = document.getElementById("badgeGraciaMedidor");
   const inputCodigo = document.getElementById("inputEditarMedidorCodigo");
   const hint = document.getElementById("hintGraciaMedidor");
@@ -2750,6 +2911,7 @@ async function submitEditarMedidor(event) {
   const ubicacionInterna = document.getElementById("inputEditarMedidorUbicacion").value.trim();
   const codigoExternoRaw = document.getElementById("inputEditarMedidorCodigoExterno")?.value?.trim() || "";
   const factorRaw = document.getElementById("inputEditarMedidorFactor")?.value;
+  const tipoMedidorId = document.getElementById("selectEditarMedidorTipo")?.value || undefined;
 
   try {
     await window.api.medidores.update(id, {
@@ -2758,6 +2920,7 @@ async function submitEditarMedidor(event) {
       ...(codigo ? { codigo } : {}),
       codigoExterno: codigoExternoRaw === "" ? null : codigoExternoRaw,
       factorInstalacion: factorRaw !== undefined && factorRaw !== "" ? parseFloat(factorRaw) : null,
+      ...(tipoMedidorId ? { tipoMedidorId } : {}),
     });
     window.Modal.close("modalEditarMedidor");
     window.Toast.success("Medidor físico actualizado correctamente.");
@@ -2807,6 +2970,94 @@ async function eliminarMedidorFisico(id) {
   }
 }
 
+// ------------------------------------------------------------------------------
+// Gestión de Tipos de Medidor (feat-026): edición, archivado y eliminación con
+// bloqueo por uso. Si el tipo tiene medidores, el backend responde 409/422.
+// ------------------------------------------------------------------------------
+async function abrirModalEditarTipo(id) {
+  let tipo = tiposMedidorCache.find((t) => t.id === id);
+  if (!tipo) {
+    try {
+      tipo = await window.api.medidores.getTipoById(id);
+    } catch (err) {
+      window.Toast.error(err.message, "Error al obtener tipo");
+      return;
+    }
+  }
+  document.getElementById("inputEditarTipoId").value = tipo.id;
+  document.getElementById("inputEditarTipoNombre").value = tipo.nombre || "";
+  document.getElementById("selectEditarTipoRecurso").value = tipo.recurso || "OTRO";
+  document.getElementById("selectEditarTipoUnidad").value = tipo.unidadMedida || tipo.unidad || "OTRO";
+  document.getElementById("selectEditarTipoMedicion").value = tipo.tipoMedicion || "ACUMULATIVO";
+  document.getElementById("inputEditarTipoMultiplicador").value =
+    tipo.multiplicador !== undefined && tipo.multiplicador !== null ? String(tipo.multiplicador) : "1";
+  document.getElementById("inputEditarTipoCapacidad").value =
+    tipo.capacidadMaxima !== undefined && tipo.capacidadMaxima !== null ? String(tipo.capacidadMaxima) : "";
+  window.Modal.open("modalEditarTipo");
+}
+
+async function submitEditarTipo(event) {
+  event.preventDefault();
+  const id = document.getElementById("inputEditarTipoId").value;
+  const nombre = document.getElementById("inputEditarTipoNombre").value.trim();
+  const recurso = document.getElementById("selectEditarTipoRecurso").value;
+  const unidad = document.getElementById("selectEditarTipoUnidad").value;
+  const tipoMedicion = document.getElementById("selectEditarTipoMedicion").value;
+  const multRaw = document.getElementById("inputEditarTipoMultiplicador").value;
+  const capRaw = document.getElementById("inputEditarTipoCapacidad").value;
+  try {
+    await window.api.medidores.updateTipo(id, {
+      nombre,
+      recurso,
+      unidad,
+      tipoMedicion,
+      multiplicador: multRaw !== "" ? parseFloat(multRaw) : 1,
+      capacidadMaxima: capRaw !== "" ? parseFloat(capRaw) : null,
+    });
+    window.Modal.close("modalEditarTipo");
+    window.Toast.success(`Tipo «${nombre}» actualizado correctamente.`);
+    await cargarSelectsGlobales();
+    await cargarParqueAdmin();
+  } catch (err) {
+    window.Toast.error(err.message, "No se puede editar el tipo");
+  }
+}
+
+async function archivarTipo(id) {
+  if (!confirm("¿Archivar este tipo de medidor? Solo es posible si no tiene medidores asociados.")) return;
+  try {
+    await window.api.medidores.archivarTipo(id);
+    window.Toast.success("Tipo archivado correctamente.");
+    await cargarSelectsGlobales();
+    await cargarParqueAdmin();
+  } catch (err) {
+    window.Toast.error(err.message, "No se puede archivar el tipo");
+  }
+}
+
+async function restaurarTipo(id) {
+  try {
+    await window.api.medidores.restaurarTipo(id);
+    window.Toast.success("Tipo restaurado.");
+    await cargarSelectsGlobales();
+    await cargarParqueAdmin();
+  } catch (err) {
+    window.Toast.error(err.message, "Error al restaurar tipo");
+  }
+}
+
+async function eliminarTipoFisico(id) {
+  if (!confirm("⚠️ ¿Eliminar definitivamente este tipo? Solo es posible si no tiene ningún medidor asociado (ni siquiera archivados).")) return;
+  try {
+    await window.api.medidores.deleteTipo(id);
+    window.Toast.success("Tipo eliminado definitivamente.");
+    await cargarSelectsGlobales();
+    await cargarParqueAdmin();
+  } catch (err) {
+    window.Toast.error(err.message, "No se puede eliminar el tipo");
+  }
+}
+
 window.setParqueTab = setParqueTab;
 window.cambiarFiltroParqueEstado = cambiarFiltroParqueEstado;
 window.cargarParqueAdmin = cargarParqueAdmin;
@@ -2820,5 +3071,10 @@ window.submitEditarMedidor = submitEditarMedidor;
 window.archivarMedidor = archivarMedidor;
 window.restaurarMedidor = restaurarMedidor;
 window.eliminarMedidorFisico = eliminarMedidorFisico;
+window.abrirModalEditarTipo = abrirModalEditarTipo;
+window.submitEditarTipo = submitEditarTipo;
+window.archivarTipo = archivarTipo;
+window.restaurarTipo = restaurarTipo;
+window.eliminarTipoFisico = eliminarTipoFisico;
 
 

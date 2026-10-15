@@ -82,13 +82,13 @@ describe("Integración HTTP en Cloudflare Workers (Hono App)", () => {
       expect(res.headers.get("access-control-allow-origin")).toBe("*");
     });
 
-    it("debe responder 403 FORBIDDEN en endpoints protegidos (como /api/auditoria) sin usuario autenticado", async () => {
+    it("debe responder 401 UNAUTHORIZED en endpoints protegidos sin usuario autenticado", async () => {
       const env = createMockEnv();
       const res = await app.request("/api/auditoria", { method: "GET" }, env);
 
-      expect(res.status).toBe(403);
+      expect(res.status).toBe(401);
       const json = await res.json() as { error: string };
-      expect(json.error).toBe("FORBIDDEN");
+      expect(json.error).toBe("UNAUTHORIZED");
     });
 
     it("debe responder 401 UNAUTHORIZED si el token JWT es inválido", async () => {

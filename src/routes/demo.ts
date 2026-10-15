@@ -1,9 +1,13 @@
 import { Hono } from "hono";
+import { SyncError } from "../schemas/sync.schema.js";
 import type { Env, Variables } from "../types.js";
 
 export const demoRouter = new Hono<{ Bindings: Env; Variables: Variables }>();
 
 demoRouter.post("/api/demo/seed", async (c) => {
+  if (c.env.NODE_ENV !== "development" && c.env.NODE_ENV !== "test") {
+    return c.json({ error: SyncError.demoDeshabilitada, message: "Carga de datos demo deshabilitada fuera de desarrollo." }, 403);
+  }
   const defaultPasswordHash =
     "a1a12b3ffb856cd9a5dbaa89d02ff57c:9571b4697c3ab7b2ed7279fc80498a1cbcc25ddb77cc0bb9c720c26975e2c684da09036cb9a7a143bf6b863a71d83d59aeb774b40cf6fd4c2751f102c6a42c75";
 
@@ -20,7 +24,6 @@ demoRouter.post("/api/demo/seed", async (c) => {
     `DELETE FROM "webhook_endpoints";`,
     `DELETE FROM "suscripciones_push";`,
     `DELETE FROM "notificaciones_historial";`,
-    `DELETE FROM "auditoria_eventos";`,
     `DELETE FROM "reglas_alerta";`,
   ];
 
@@ -107,7 +110,13 @@ demoRouter.post("/api/demo/seed", async (c) => {
     await c.env.DB.prepare(q).run();
   }
 
+  const instalaciones = await c.env.DB.prepare("SELECT id, nombre, codigo FROM instalaciones ORDER BY id LIMIT 100").all<{ id: string; nombre: string; codigo: string | null }>();
+  const medidores = await c.env.DB.prepare("SELECT id, codigo, instalacionId, tipoMedidorId FROM medidores ORDER BY id LIMIT 100").all<{ id: string; codigo: string; instalacionId: string; tipoMedidorId: string }>();
+  const usuarios = await c.env.DB.prepare("SELECT id, email, nombre, rol FROM usuarios WHERE email IN (?, ?, ?) ORDER BY email LIMIT 3")
+    .bind("admin@medidores.cl", "supervisor@medidores.cl", "operador@medidores.cl")
+    .all<{ id: string; email: string; nombre: string; rol: string }>();
   return c.json({
+    seedData: { instalaciones: instalaciones.results, medidores: medidores.results, usuarios: usuarios.results },
     success: true,
     message: "Base de datos inicializada y restablecida con datos demo para E2E y desarrollo.",
     usuarios: ["admin@medidores.cl", "supervisor@medidores.cl", "operador@medidores.cl"],

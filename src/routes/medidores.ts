@@ -3,7 +3,8 @@ import { z } from "zod";
 import type { Env, Variables } from "../types.js";
 import { registrarAuditoria } from "../audit.js";
 import { sqlInList } from "../db.js";
-import { calcularPeriodoGracia } from "../domain.js";
+import { EditarTipoSchema, SyncError, type TipoAccionSync } from "../schemas/sync.schema.js";
+import { calcularPeriodoGracia, normalizarFechaISO } from "../domain.js";
 
 type AppContext = Context<{ Bindings: Env; Variables: Variables }>;
 
@@ -21,6 +22,7 @@ const CrearMedidorSchema = z.object({
 });
 
 const EditarMedidorSchema = z.object({
+  tipoMedidorId: z.string().trim().min(1).max(128).optional(),
   codigo: z.string().trim().min(3).max(50).optional(),
   codigoExterno: z.string().trim().min(3).max(100).nullable().optional(),
   factorInstalacion: z.number().positive().max(1000000).nullable().optional(),
@@ -245,7 +247,9 @@ const CrearTipoMedidorSchema = z.object({
 // 3. Tipos de medidores
 const fetchTipos = async (c: AppContext) => {
   const { results } = await c.env.DB.prepare(
-    "SELECT id, nombre, recurso, unidad, tipoMedicion, multiplicador, capacidadMaxima, activo FROM tipos_medidor WHERE activo = 1 ORDER BY nombre ASC LIMIT 100"
+    `SELECT id, nombre, recurso, unidad, tipoMedicion, multiplicador, capacidadMaxima, activo FROM tipos_medidor
+     ${c.get("user")?.rol === "ADMIN" && c.req.query("estado") === "todos" ? "" : c.get("user")?.rol === "ADMIN" && c.req.query("estado") === "archivados" ? "WHERE activo = 0" : "WHERE activo = 1"}
+     ORDER BY nombre ASC LIMIT 100`
   ).all<{ id: string; nombre: string; recurso: string; unidad: string; tipoMedicion: string; multiplicador: number | null; capacidadMaxima: number | null; activo: number }>();
 
   return c.json(results.map((r) => ({
@@ -262,7 +266,7 @@ medidoresRouter.get("/api/medidores/tipos", fetchTipos);
 
 const handleCrearTipo = async (c: AppContext) => {
   const user = c.get("user");
-  if (!user || (user.rol !== "ADMIN" && user.rol !== "SUPERVISOR")) {
+  if (!user || user.rol !== "ADMIN") {
     return c.json({ error: "FORBIDDEN", message: "Permisos insuficientes" }, 403);
   }
 
@@ -303,6 +307,93 @@ const handleCrearTipo = async (c: AppContext) => {
 
 medidoresRouter.post("/api/tipos-medidor", handleCrearTipo);
 medidoresRouter.post("/api/medidores/tipos", handleCrearTipo);
+
+interface TipoRow {
+  id: string; nombre: string; recurso: string; unidad: string; tipoMedicion: string;
+  multiplicador: number; capacidadMaxima: number | null; activo: number;
+  createdAt: string; updatedAt: string;
+}
+const tipoColumns = "id, nombre, recurso, unidad, tipoMedicion, multiplicador, capacidadMaxima, activo, createdAt, updatedAt";
+function formatoTipo(row: TipoRow) {
+  return { ...row, activo: Boolean(row.activo), unidadMedida: row.unidad,
+    multiplicador: row.multiplicador ?? 1, capacidadMaxima: row.capacidadMaxima ?? null,
+    createdAt: new Date(normalizarFechaISO(row.createdAt) || row.createdAt).toISOString(),
+    updatedAt: new Date(normalizarFechaISO(row.updatedAt) || row.updatedAt).toISOString() };
+}
+function syncAudit(c: AppContext, accion: TipoAccionSync, entidad: string, id: string, detalles: unknown) {
+  return c.env.DB.prepare(`INSERT INTO auditoria_eventos
+    (id, usuarioId, accion, entidad, entidadId, detalles, ip, createdAt)
+    VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`)
+    .bind(crypto.randomUUID(), c.get("user")?.id ?? null, accion, entidad, id,
+      JSON.stringify(detalles), c.req.header("cf-connecting-ip") ?? null);
+}
+async function findTipo(c: AppContext, id: string) {
+  return c.env.DB.prepare(`SELECT ${tipoColumns} FROM tipos_medidor WHERE id = ?`).bind(id).first<TipoRow>();
+}
+async function countTipo(c: AppContext, id: string): Promise<number> {
+  const row = await c.env.DB.prepare("SELECT COUNT(*) as n FROM medidores WHERE tipoMedidorId = ?").bind(id).first<{ n: number }>();
+  return row?.n ?? 0;
+}
+
+for (const base of ["/api/tipos-medidor", "/api/medidores/tipos"]) {
+  medidoresRouter.get(`${base}/:id`, async (c) => {
+    const row = await findTipo(c, c.req.param("id"));
+    if (!row || (!row.activo && c.get("user")?.rol !== "ADMIN")) {
+      return c.json({ error: SyncError.tipoNoEncontrado, message: "Tipo de medidor no encontrado" }, 404);
+    }
+    return c.json(formatoTipo(row));
+  });
+  medidoresRouter.patch(`${base}/:id`, async (c) => {
+    const parsed = EditarTipoSchema.safeParse(await c.req.json());
+    if (!parsed.success) return c.json({ error: "VALIDATION_ERROR", message: "Datos de tipo inválidos" }, 400);
+    const id = c.req.param("id");
+    const actual = await findTipo(c, id);
+    if (!actual) return c.json({ error: SyncError.tipoNoEncontrado, message: "Tipo de medidor no encontrado" }, 404);
+    const count = await countTipo(c, id);
+    if (count) return c.json({ error: SyncError.tipoEnUso, message: "Reasigne los medidores a otro tipo antes de editar.", details: { tipoId: id, count, operacion: "editar" } }, 409);
+    if (parsed.data.nombre !== undefined) {
+      const duplicate = await c.env.DB.prepare("SELECT id FROM tipos_medidor WHERE nombre = ? AND id <> ?").bind(parsed.data.nombre, id).first();
+      if (duplicate) return c.json({ error: SyncError.nombreDuplicado, message: "Nombre de tipo duplicado" }, 409);
+    }
+    const fields = Object.entries(parsed.data);
+    const sql = `UPDATE tipos_medidor SET ${fields.map(([key]) => `${key} = ?, `).join("")}updatedAt = CURRENT_TIMESTAMP WHERE id = ?`;
+    await c.env.DB.batch([
+      c.env.DB.prepare(sql).bind(...fields.map(([, value]) => value), id),
+      syncAudit(c, "TIPO_MEDIDOR_EDITADO", "TipoMedidor", id, { antes: actual, despues: { ...actual, ...parsed.data } }),
+    ]);
+    const updated = await findTipo(c, id);
+    return c.json(formatoTipo(updated ?? actual));
+  });
+  for (const action of ["archivar", "restaurar"] as const) {
+    medidoresRouter.patch(`${base}/:id/${action}`, async (c) => {
+      const id = c.req.param("id");
+      const actual = await findTipo(c, id);
+      if (!actual) return c.json({ error: SyncError.tipoNoEncontrado, message: "Tipo de medidor no encontrado" }, 404);
+      if (action === "archivar") {
+        const count = await countTipo(c, id);
+        if (count) return c.json({ error: SyncError.tipoEnUso, message: "Reasigne los medidores antes de archivar.", details: { tipoId: id, count, operacion: action } }, 409);
+      }
+      const activo = action === "restaurar" ? 1 : 0;
+      await c.env.DB.batch([
+        c.env.DB.prepare("UPDATE tipos_medidor SET activo = ?, updatedAt = CURRENT_TIMESTAMP WHERE id = ?").bind(activo, id),
+        syncAudit(c, action === "archivar" ? "TIPO_MEDIDOR_ARCHIVADO" : "TIPO_MEDIDOR_RESTAURADO", "TipoMedidor", id, { antes: actual, despues: { ...actual, activo: Boolean(activo) } }),
+      ]);
+      return c.json({ success: true, id, activo: Boolean(activo) });
+    });
+  }
+  medidoresRouter.delete(`${base}/:id`, async (c) => {
+    const id = c.req.param("id");
+    const actual = await findTipo(c, id);
+    if (!actual) return c.json({ error: SyncError.tipoNoEncontrado, message: "Tipo de medidor no encontrado" }, 404);
+    const count = await countTipo(c, id);
+    if (count) return c.json({ error: SyncError.tipoNoEliminable, message: "El tipo tiene medidores asociados.", details: { tipoId: id, count } }, 422);
+    await c.env.DB.batch([
+      syncAudit(c, "TIPO_MEDIDOR_ELIMINADO", "TipoMedidor", id, { snapshot: actual }),
+      c.env.DB.prepare("DELETE FROM tipos_medidor WHERE id = ?").bind(id),
+    ]);
+    return c.json({ success: true, id });
+  });
+}
 
 // 4. Detalle de medidor
 medidoresRouter.get("/api/medidores/:id", async (c) => {
@@ -396,7 +487,7 @@ medidoresRouter.patch("/api/medidores/:id", async (c) => {
   const parsed = EditarMedidorSchema.safeParse(body);
   if (!parsed.success) return c.json({ error: "VALIDATION_ERROR", message: "Datos inválidos" }, 400);
   const actual = await c.env.DB.prepare("SELECT * FROM medidores WHERE id = ?").bind(id).first<{
-    id: string; codigo: string; codigoExterno: string | null; factorInstalacion: number | null;
+    id: string; codigo: string; tipoMedidorId: string; codigoExterno: string | null; factorInstalacion: number | null;
     numeroSerie: string | null; ubicacionInterna: string; createdAt: string;
   }>();
   if (!actual) return c.json({ error: "NOT_FOUND", message: "Medidor no encontrado" }, 404);
@@ -417,19 +508,24 @@ medidoresRouter.patch("/api/medidores/:id", async (c) => {
       }
     }
   }
+  if (parsed.data.tipoMedidorId !== undefined && parsed.data.tipoMedidorId !== actual.tipoMedidorId) {
+    const tipo = await findTipo(c, parsed.data.tipoMedidorId);
+    if (!tipo) return c.json({ error: SyncError.tipoNoEncontrado, message: "Tipo de medidor no encontrado" }, 404);
+    if (!tipo.activo) return c.json({ error: SyncError.tipoInactivo, message: "Tipo de medidor archivado" }, 422);
+  }
   const sets: string[] = ["updatedAt = CURRENT_TIMESTAMP"];
   const vals: unknown[] = [];
+  if (parsed.data.tipoMedidorId !== undefined) { sets.push("tipoMedidorId = ?"); vals.push(parsed.data.tipoMedidorId); }
   if (parsed.data.codigo !== undefined) { sets.push("codigo = ?"); vals.push(parsed.data.codigo.trim()); }
   if (parsed.data.codigoExterno !== undefined) { sets.push("codigoExterno = ?"); vals.push(parsed.data.codigoExterno === null ? null : parsed.data.codigoExterno.trim()); }
   if (parsed.data.factorInstalacion !== undefined) { sets.push("factorInstalacion = ?"); vals.push(parsed.data.factorInstalacion); }
   if (parsed.data.numeroSerie !== undefined) { sets.push("numeroSerie = ?"); vals.push(parsed.data.numeroSerie); }
   if (parsed.data.ubicacionInterna !== undefined) { sets.push("ubicacionInterna = ?"); vals.push(parsed.data.ubicacionInterna.trim()); }
   if (parsed.data.activo !== undefined) { sets.push("activo = ?"); vals.push(parsed.data.activo ? 1 : 0); }
-  await c.env.DB.prepare(`UPDATE medidores SET ${sets.join(", ")} WHERE id = ?`).bind(...vals, id).run();
-  await registrarAuditoria({
-    db: c.env.DB, usuario: user, accion: "MEDIDOR_EDITADO", entidad: "Medidor", entidadId: id,
-    detalles: { antes: { codigo: actual.codigo, codigoExterno: actual.codigoExterno, factorInstalacion: actual.factorInstalacion }, despues: parsed.data },
-  });
+  await c.env.DB.batch([
+    c.env.DB.prepare(`UPDATE medidores SET ${sets.join(", ")} WHERE id = ?`).bind(...vals, id),
+    syncAudit(c, "MEDIDOR_EDITADO", "Medidor", id, { antes: actual, despues: { ...actual, ...parsed.data } }),
+  ]);
   return c.json({ success: true, id });
 });
 
@@ -467,7 +563,7 @@ medidoresRouter.delete("/api/medidores/:id", async (c) => {
   if (!user || user.rol !== "ADMIN") return c.json({ error: "FORBIDDEN", message: "Solo administradores" }, 403);
   const id = c.req.param("id");
   const actual = await c.env.DB.prepare("SELECT * FROM medidores WHERE id = ?").bind(id).first<{
-    id: string; codigo: string; codigoExterno: string | null; factorInstalacion: number | null;
+    id: string; codigo: string; tipoMedidorId: string; codigoExterno: string | null; factorInstalacion: number | null;
     numeroSerie: string | null; ubicacionInterna: string; instalacionId: string; createdAt: string;
   }>();
   if (!actual) return c.json({ error: "NOT_FOUND", message: "Medidor no encontrado" }, 404);

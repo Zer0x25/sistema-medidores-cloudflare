@@ -330,6 +330,49 @@ body {
   }
 }
 
+/* Gráficos del Dashboard (feat-028) */
+.charts-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+  padding: 1.25rem;
+  max-width: 100%;
+}
+
+.chart-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 1rem;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.chart-card:first-child {
+  grid-column: 1 / -1;
+}
+
+.chart-title {
+  margin: 0 0 0.75rem 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.chart-card canvas {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+}
+
+@media (max-width: 768px) {
+  .charts-grid {
+    grid-template-columns: 1fr;
+    padding: 0.85rem;
+  }
+}
+
 .desatendidos-list,
 .consumo-list {
   display: flex;
@@ -400,6 +443,12 @@ body {
   border: 1px solid rgba(245, 158, 11, 0.35);
 }
 
+.network-badge.degraded {
+  background: rgba(239, 68, 68, 0.12);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.35);
+}
+
 .network-dot {
   width: 7px;
   height: 7px;
@@ -415,6 +464,12 @@ body {
 .network-badge.offline .network-dot {
   background-color: #f59e0b;
   box-shadow: 0 0 6px rgba(245, 158, 11, 0.6);
+  animation: pulse-offline 1.5s infinite ease-in-out;
+}
+
+.network-badge.degraded .network-dot {
+  background-color: #ef4444;
+  box-shadow: 0 0 6px rgba(239, 68, 68, 0.6);
   animation: pulse-offline 1.5s infinite ease-in-out;
 }
 

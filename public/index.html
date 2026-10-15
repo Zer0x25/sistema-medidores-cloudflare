@@ -128,6 +128,7 @@
         </button>
       </nav>
 
+      <!-- Selector Rápido de Roles RBAC (ADR 0002 / Spec-005) -->
       <!-- Selector Rápido de Roles RBAC (ADR 0002 / Spec-005). Fail-closed: oculto por defecto, solo JS lo revela en dev (ADR 0012) -->
       <div class="role-simulator-bar" id="roleSimulatorBar" aria-label="Simular usuario por rol" style="display: none;">
         <span class="simulator-label">Simular:</span>
@@ -167,13 +168,13 @@
           </svg>
         </button>
 
-        <button class="btn btn-secondary btn-sm" id="btnSeedDemo" onclick="seedDemoData()">
+        <button class="btn btn-secondary btn-sm" id="btnSeedDemo" data-testid="btn-seed-demo" onclick="seedDemoData()" style="display: none;">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
           </svg>
           Cargar Datos Demo
         </button>
-        <div id="networkStatusBadge" class="network-badge online" title="Conexión activa con el servidor">
+        <div id="networkStatusBadge" data-testid="network-status-badge" class="network-badge online" title="Verificando conexión con el servidor...">
           <span class="network-dot"></span>
           <span>En línea</span>
         </div>
@@ -320,7 +321,7 @@
         <button class="btn btn-outline" onclick="window.Theme.toggle()" style="width: 100%; justify-content: center; min-height: 44px;">
           🌓 Alternar Modo Claro / Oscuro
         </button>
-        <button class="btn btn-secondary" onclick="seedDemoData(); window.closeMobileMenu();" style="width: 100%; justify-content: center; min-height: 44px;">
+        <button class="btn btn-secondary" id="btnSeedDemoMobile" data-testid="btn-seed-demo-mobile" onclick="seedDemoData(); window.closeMobileMenu();" style="display: none; width: 100%; justify-content: center; min-height: 44px;">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
           </svg>
@@ -527,6 +528,60 @@
         </div>
       </div>
 
+      <!-- Análisis Gráfico por Medidor / Instalación / Recurso (feat-028) -->
+      <div class="card mt-6" id="seccionGraficos" data-testid="seccion-graficos">
+        <div class="card-header" style="flex-wrap: wrap; gap: 0.75rem;">
+          <h2 class="card-title">📊 Análisis Gráfico de Telemetría</h2>
+          <button class="btn btn-ghost btn-sm" data-testid="btn-refrescar-graficos" onclick="cargarGraficosDashboard()">Refrescar gráficos</button>
+        </div>
+        <div class="reports-filter-grid" style="padding: 0 1.25rem;">
+          <div class="form-group" style="margin-bottom: 0;">
+            <label for="filtroGraficoInstalacion" class="form-label">Sede:</label>
+            <select id="filtroGraficoInstalacion" class="form-select" data-testid="filtro-grafico-instalacion" onchange="cargarGraficosDashboard()">
+              <option value="">Todas las sedes</option>
+            </select>
+          </div>
+          <div class="form-group" style="margin-bottom: 0;">
+            <label for="filtroGraficoMedidor" class="form-label">Medidor:</label>
+            <select id="filtroGraficoMedidor" class="form-select" data-testid="filtro-grafico-medidor" onchange="cargarGraficosDashboard()">
+              <option value="">Todos los medidores</option>
+            </select>
+          </div>
+          <div class="form-group" style="margin-bottom: 0;">
+            <label for="filtroGraficoRecurso" class="form-label">Recurso:</label>
+            <select id="filtroGraficoRecurso" class="form-select" data-testid="filtro-grafico-recurso" onchange="cargarGraficosDashboard()">
+              <option value="">Todos</option>
+              <option value="AGUA">Agua</option>
+              <option value="LUZ">Electricidad</option>
+              <option value="GAS">Gas</option>
+              <option value="PETROLEO">Combustible</option>
+            </select>
+          </div>
+          <div class="form-group" style="margin-bottom: 0;">
+            <label for="filtroGraficoDesde" class="form-label">Desde:</label>
+            <input type="date" id="filtroGraficoDesde" class="form-input" data-testid="filtro-grafico-desde" onchange="cargarGraficosDashboard()">
+          </div>
+          <div class="form-group" style="margin-bottom: 0;">
+            <label for="filtroGraficoHasta" class="form-label">Hasta:</label>
+            <input type="date" id="filtroGraficoHasta" class="form-input" data-testid="filtro-grafico-hasta" onchange="cargarGraficosDashboard()">
+          </div>
+        </div>
+        <div class="charts-grid">
+          <div class="chart-card">
+            <h3 class="chart-title">Evolución por medidor</h3>
+            <canvas id="chartEvolucionMedidor" data-testid="chart-evolucion-medidor" role="img" aria-label="Gráfico de evolución de lecturas por medidor">Tu navegador no soporta canvas.</canvas>
+          </div>
+          <div class="chart-card">
+            <h3 class="chart-title">Consumo por instalación</h3>
+            <canvas id="chartConsumoInstalacion" data-testid="chart-consumo-instalacion" role="img" aria-label="Gráfico de barras de consumo por instalación">Tu navegador no soporta canvas.</canvas>
+          </div>
+          <div class="chart-card">
+            <h3 class="chart-title">Distribución por recurso</h3>
+            <canvas id="chartDistribucionRecurso" data-testid="chart-distribucion-recurso" role="img" aria-label="Gráfico de dona de medidores por recurso">Tu navegador no soporta canvas.</canvas>
+          </div>
+        </div>
+      </div>
+
       <!-- Columnas del Tablero: Alertas & Consumos -->
       <div class="dashboard-columns">
         <div class="card">
@@ -601,6 +656,9 @@
               <button type="button" class="btn btn-sm btn-outline" id="btnParqueTabMedidores" data-testid="btn-parque-tab-medidores" onclick="setParqueTab('medidores')">
                 Medidores Físicos
               </button>
+              <button type="button" class="btn btn-sm btn-outline" id="btnParqueTabTipos" data-testid="btn-parque-tab-tipos" onclick="setParqueTab('tipos')">
+                Tipos de Medidor
+              </button>
             </div>
           </div>
           <div class="header-filters" style="display: flex; align-items: center; gap: 0.5rem;">
@@ -655,6 +713,30 @@
               </tr>
             </tbody>
           </table>
+        </div>
+
+        <!-- Tabla de Tipos de Medidor (feat-026) -->
+        <div id="contenedorTablaTipos" class="table-responsive" style="display: none;">
+          <table class="data-table" id="tablaGestionTipos" data-testid="tabla-gestion-tipos">
+            <thead>
+              <tr>
+                <th>Nombre</th>
+                <th>Recurso</th>
+                <th>Unidad</th>
+                <th>Modo</th>
+                <th>Factor</th>
+                <th>Capacidad Máx.</th>
+                <th>Estado</th>
+                <th style="text-align: right;">Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="tbodyGestionTipos" data-testid="tbody-gestion-tipos">
+              <tr>
+                <td colspan="8" class="empty-state">Cargando tipos...</td>
+              </tr>
+            </tbody>
+          </table>
+          <p class="form-hint" style="margin-top: 0.5rem;">Un tipo con medidores asociados no se puede editar, archivar ni eliminar: reasigne primero sus medidores a otro tipo desde «Editar Medidor».</p>
         </div>
       </div>
 
@@ -1394,6 +1476,71 @@
     </div>
   </div>
 
+  <!-- MODAL: EDITAR TIPO DE MEDIDOR (feat-026)                        -->
+  <!-- ============================================================== -->
+  <div class="modal-backdrop" id="modalEditarTipo" data-testid="modal-editar-tipo" data-state="closed" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="modalEditarTipoTitulo">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modalEditarTipoTitulo">✏️ Editar Tipo de Medidor</h3>
+        <button class="btn-close" id="btnCloseModalEditarTipo" data-testid="btn-close-modal-editar-tipo" onclick="closeModal('modalEditarTipo')" aria-label="Cerrar">&times;</button>
+      </div>
+      <form id="formEditarTipo" data-testid="form-editar-tipo" onsubmit="submitEditarTipo(event)">
+        <input type="hidden" id="inputEditarTipoId" />
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="inputEditarTipoNombre" class="form-label">Nombre Descriptivo *</label>
+            <input type="text" id="inputEditarTipoNombre" data-testid="input-editar-tipo-nombre" class="form-input" required>
+          </div>
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label for="selectEditarTipoRecurso" class="form-label">Recurso *</label>
+              <select id="selectEditarTipoRecurso" data-testid="select-editar-tipo-recurso" class="form-select" required>
+                <option value="AGUA">Agua</option>
+                <option value="LUZ">Electricidad (Luz)</option>
+                <option value="GAS">Gas</option>
+                <option value="PETROLEO">Petróleo / Combustible</option>
+                <option value="OTRO">Otro Recurso</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="selectEditarTipoUnidad" class="form-label">Unidad *</label>
+              <select id="selectEditarTipoUnidad" data-testid="select-editar-tipo-unidad" class="form-select" required>
+                <option value="LITROS">Litros</option>
+                <option value="M3">m³</option>
+                <option value="KWH">kWh</option>
+                <option value="PORCENTAJE">Porcentaje</option>
+                <option value="OTRO">Otra</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="selectEditarTipoMedicion" class="form-label">Modo de Medición *</label>
+            <select id="selectEditarTipoMedicion" data-testid="select-editar-tipo-medicion" class="form-select" required>
+              <option value="ACUMULATIVO">Acumulativo / Secuencial</option>
+              <option value="NIVEL">Nivel (tanque)</option>
+              <option value="INSTANTANEO">Instantáneo</option>
+            </select>
+          </div>
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label for="inputEditarTipoMultiplicador" class="form-label">Multiplicador / Factor *</label>
+              <input type="number" id="inputEditarTipoMultiplicador" data-testid="input-editar-tipo-multiplicador" class="form-input font-mono" min="0.000001" step="any" required>
+            </div>
+            <div class="form-group">
+              <label for="inputEditarTipoCapacidad" class="form-label">Capacidad Máx. (solo NIVEL)</label>
+              <input type="number" id="inputEditarTipoCapacidad" data-testid="input-editar-tipo-capacidad" class="form-input font-mono" placeholder="Vacío = sin cota" min="0" step="any">
+            </div>
+          </div>
+          <p class="form-hint" id="hintEditarTipoUso">Si el tipo tiene medidores asociados, la edición se rechaza: reasígnelos primero.</p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" onclick="closeModal('modalEditarTipo')">Cancelar</button>
+          <button type="submit" class="btn btn-primary" id="btnSubmitEditarTipo" data-testid="btn-submit-editar-tipo">Guardar Cambios</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- ============================================================== -->
   <!-- MODAL: NUEVO MEDIDOR FÍSICO -->
   <!-- ============================================================== -->
@@ -1528,6 +1675,11 @@
           <div class="form-group">
             <label for="inputEditarMedidorUbicacion" class="form-label">Ubicación Interna en Planta *</label>
             <input type="text" id="inputEditarMedidorUbicacion" data-testid="input-editar-medidor-ubicacion" class="form-input" required>
+          </div>
+          <div class="form-group">
+            <label for="selectEditarMedidorTipo" class="form-label">Tipo de Medidor (reasignación)</label>
+            <select id="selectEditarMedidorTipo" data-testid="select-editar-medidor-tipo" class="form-select"></select>
+            <span class="form-hint">Cambiar el tipo libera el tipo anterior. Las lecturas históricas conservan su factor original.</span>
           </div>
         </div>
         <div class="modal-footer">
@@ -2053,6 +2205,7 @@
   <script src="/js/api.js"></script>
   <script src="/js/theme.js"></script>
   <script src="/js/components.js"></script>
+  <script src="/js/charts.js"></script>
   <script src="/js/sync-manager.js"></script>
   <script src="/app.js"></script>
 </body>

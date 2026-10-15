@@ -1,4 +1,4 @@
-const CACHE_NAME = "medidores-shell-v2";
+const CACHE_NAME = "medidores-shell-v4";
 const ASSETS_TO_CACHE = [
   "/",
   "/index.html",
@@ -8,6 +8,7 @@ const ASSETS_TO_CACHE = [
   "/css/components.css",
   "/js/theme.js",
   "/js/api.js",
+  "/js/charts.js",
   "/js/components.js",
   "/js/sync-manager.js",
   "/icon.svg",
@@ -43,8 +44,9 @@ self.addEventListener("fetch", (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
-  // 1. Las llamadas a la API jamás se guardan en cache HTTP del Service Worker
-  if (url.pathname.startsWith("/api/")) {
+  // 1. Las llamadas a la API y los probes de salud jamás se guardan en cache del Service Worker
+  // (feat-027: /readyz es la base del healthcheck real del badge; cachearlo lo dejaría siempre "En línea")
+  if (url.pathname.startsWith("/api/") || url.pathname === "/readyz" || url.pathname === "/healthz") {
     return; // Dejar pasar directo a la red (la capa SyncManager gestiona el offline de lecturas)
   }
 

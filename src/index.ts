@@ -41,11 +41,14 @@ app.use("*", cors({
 app.use("/api/*", async (c, next) => {
   // Rutas públicas exentas de autenticación
   const publicRoutes = ["/api/auth/login", "/api/auth/register", "/api/health", "/api/config", "/api/demo/seed"];
-  if (publicRoutes.some(route => c.req.path.startsWith(route))) {
+  if (publicRoutes.includes(c.req.path)) {
     return next();
   }
 
   const authHeader = c.req.header("Authorization");
+  if (!authHeader?.startsWith("Bearer ")) {
+    return c.json({ error: "UNAUTHORIZED", message: "Se requiere una sesión válida" }, 401);
+  }
   if (authHeader && authHeader.startsWith("Bearer ")) {
     const token = authHeader.slice(7).trim();
     try {
@@ -66,6 +69,15 @@ app.use("/api/*", async (c, next) => {
     }
   }
 
+  const user = c.get("user");
+  if (!user) return c.json({ error: "UNAUTHORIZED", message: "Token inválido o expirado" }, 401);
+  if (user.rol === "OPERADOR" && c.req.path.startsWith("/api/dashboard/")) {
+    return c.json({ error: "FORBIDDEN", message: "Permisos insuficientes" }, 403);
+  }
+  const tiposPath = /^\/api\/(tipos-medidor|medidores\/tipos)(\/|$)/.test(c.req.path);
+  if (tiposPath && c.req.method !== "GET" && user.rol !== "ADMIN") {
+    return c.json({ error: "FORBIDDEN", message: "Solo administradores" }, 403);
+  }
   await next();
 });
 
@@ -95,6 +107,7 @@ app.route("/", demoRouter);
 
 // 7. Despacho de Archivos Estáticos (Frontend SPA en ./public vía Workers Assets)
 app.get("*", async (c) => {
+  if (c.req.path.startsWith("/api/")) return c.json({ error: "NOT_FOUND", message: "Ruta no encontrada" }, 404);
   if (c.env.ASSETS) {
     return await c.env.ASSETS.fetch(c.req.raw);
   }

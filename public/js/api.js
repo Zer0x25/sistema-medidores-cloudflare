@@ -256,6 +256,17 @@ class ApiClient {
     getDesatendidos: (horas = 24) => this.request(`/api/dashboard/desatendidos?horas=${horas}`),
     getConsumos: () => this.request("/api/dashboard/consumos"),
     getActividadReciente: (limit = 10) => this.request(`/api/dashboard/actividad-reciente?limit=${limit}`),
+    getSeries: (params = {}) => {
+      const q = new URLSearchParams();
+      if (params.medidorId) q.append("medidorId", params.medidorId);
+      if (params.instalacionId) q.append("instalacionId", params.instalacionId);
+      if (params.recurso) q.append("recurso", params.recurso);
+      if (params.fechaInicio) q.append("fechaInicio", params.fechaInicio);
+      if (params.fechaFin) q.append("fechaFin", params.fechaFin);
+      if (params.limite) q.append("limite", String(params.limite));
+      const qs = q.toString();
+      return this.request(`/api/dashboard/series${qs ? `?${qs}` : ""}`);
+    },
   };
 
   // --- Dominio: Lecturas & Telemetría ---
@@ -305,11 +316,29 @@ class ApiClient {
   // --- Dominio: Medidores & Tipos ---
   medidores = {
     getAll: (estado = "activos") => this.request(`/api/medidores?estado=${encodeURIComponent(estado)}`),
-    getTipos: () => this.request("/api/tipos-medidor"),
+    getTipos: (estado = "activos") => this.request(`/api/tipos-medidor?estado=${encodeURIComponent(estado)}`),
+    getTipoById: (id) => this.request(`/api/tipos-medidor/${encodeURIComponent(id)}`),
     createTipo: (payload) =>
       this.request("/api/tipos-medidor", {
         method: "POST",
         body: JSON.stringify(payload),
+      }),
+    updateTipo: (id, payload) =>
+      this.request(`/api/tipos-medidor/${encodeURIComponent(id)}`, {
+        method: "PATCH",
+        body: JSON.stringify(payload),
+      }),
+    archivarTipo: (id) =>
+      this.request(`/api/tipos-medidor/${encodeURIComponent(id)}/archivar`, {
+        method: "PATCH",
+      }),
+    restaurarTipo: (id) =>
+      this.request(`/api/tipos-medidor/${encodeURIComponent(id)}/restaurar`, {
+        method: "PATCH",
+      }),
+    deleteTipo: (id) =>
+      this.request(`/api/tipos-medidor/${encodeURIComponent(id)}`, {
+        method: "DELETE",
       }),
     getByInstalacion: (instalacionId, estado = "activos") =>
       this.request(`/api/medidores?instalacionId=${encodeURIComponent(instalacionId)}&estado=${encodeURIComponent(estado)}`),
@@ -510,6 +539,23 @@ class ApiClient {
   // --- Dominio: Configuración del Sistema (feat-018) ---
   config = {
     get: () => this.request("/api/config"),
+  };
+
+  // --- Salud operativa (feat-027): healthcheck real frontend -> backend ---
+  salud = {
+    verificarReadyz: async (timeoutMs = 5000) => {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), timeoutMs);
+      const inicio = (typeof performance !== "undefined" && performance.now) ? performance.now() : Date.now();
+      try {
+        // no-store: el SW nunca debe servir un /readyz cacheado (feat-027 fix)
+        const res = await fetch("/readyz", { method: "GET", signal: controller.signal, cache: "no-store" });
+        const fin = (typeof performance !== "undefined" && performance.now) ? performance.now() : Date.now();
+        return { ok: res.ok, status: res.status, latenciaMs: Math.round(fin - inicio) };
+      } finally {
+        clearTimeout(timer);
+      }
+    },
   };
 }
 

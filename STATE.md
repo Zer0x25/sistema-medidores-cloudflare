@@ -4,14 +4,30 @@ Este archivo actúa como memoria persistente y tablero de control para humanos y
 
 ---
 
-## 🧭 Fase Actual: Entorno Autónomo Cloudflare Edge Potenciado & Certificado
+## 🧭 Fase Actual: Publicación autorizada de feat-026 a feat-028 en curso
 
-- **Proyecto:** `sistema-medidores-cloudflare` (Cloudflare Workers + Hono + D1 + KV + Static Assets)
-- **Estado:** 100% autónomo, portable, probado y certificado tanto en entorno local (`wrangler dev`) como en producción (`https://metric.zer0x.org`).
-- **Dominio Edge:** `metric.zer0x.org` (Version ID: `ef83386e-2988-42bd-813c-958a6bb9d6e1`)
-- **Última verificación de Quality Gate (`./scripts/verify.sh`):** Código de salida 0 (Typecheck 0 errores, ESLint 0 advertencias, Vitest 38/38 tests pasando). Migración `0003_ciclo_vida_factor_origen` aplicada en D1 local y remota; despliegue `ef83386e` verificado en producción (`/healthz`, `/readyz`, `viewParque`, columnas `codigoExterno/factorInstalacion/valorBruto/origen` presentes).
-- **Herramienta CLI:** Actualizado a **Wrangler v4 (`^4.147.0`)** y `@cloudflare/workers-types` (`^5.20261006.1`) con soporte para tipos de runtime generados.
-- **Test de Simetría de Contrato (`npm run test:contract:remote`):** 100% pasando sin fugas (`undefined`, `null`, `NaN`, `Invalid Date`, `[object Object]`) verificado en producción tras despliegue con Wrangler v4.
+- **Proyecto:** `sistema-medidores-cloudflare` (Workers + Hono + D1 + KV + Static Assets).
+- **Estado local:** Paridad funcional con upstream `cdd9d82` para gestión de tipos,
+  reasignación, demo solo en desarrollo, salud real y gráficos del dashboard.
+- **Spec activo:** `specs/sync-026-028-paridad-upstream.md`.
+- **Quality Gate (2026-10-14):** `./scripts/verify.sh` salida 0; tipos y lint limpios,
+  **73/73 pruebas** (31 nuevas con SQLite real). Fase roja inicial: 24 fallos por
+  funciones/guardias ausentes; prueba adicional de seedData falló antes de implementarse.
+- **Runtime local:** Migraciones 0001–0004 aplicadas mediante Wrangler con persistencia
+  temporal aislada; prueba de simetría y `scripts/test-sync-026-028.mjs` superadas.
+- **Navegador:** **7/7 E2E upstream** ejecutados contra Wrangler local (gráficos 2,
+  tipos 2, PWA 3); 320/375/768/1440 px sin overflow, tres canvas dibujados y cero
+  errores en los buffers de diagnóstico. Modo production local: login visible,
+  demo/simulador ocultos y seed 403 antes de acceder a D1.
+- **Empaquetado:** `wrangler deploy --dry-run` salida 0; no acredita despliegue remoto.
+- **Publicación:** Commit/push y despliegue autorizados por el usuario el 2026-10-14.
+  Gate repetido: salida 0 (73/73). Cuenta, bindings y configuración contrastados
+  con Cloudflare; producción previa `42d45807-f77e-40b7-81f7-111e23b46af7`.
+  D1 solo tiene pendiente `0004_indices_tipos_series.sql`; publicación en curso.
+  Los cuatro commits preexistentes se conservan en la misma historia.
+- **Pendiente de seguridad preexistente:** `JWT_SECRET` figura como variable de texto
+  en configuración versionada y remota. Migrarlo a secreto protegido y rotarlo
+  requiere una intervención específica que invalida las sesiones activas.
 
 ---
 
@@ -58,6 +74,14 @@ Este registro almacena los hitos o funcionalidades cerradas en el repo padre que
 - [x] **Hito 15.5 / feat-023 (Módulo Parque):** Sincronizado (2026-10-07). Frontend `public/` alineado a upstream (`viewParque #/parque`, `nav-parque`, `seccionGestionParque`, modales edición, `ApiClient` archivar/restaurar/eliminar).
 - [x] **Hito 15.6 / feat-024 (Tipos con Factor + Recargas):** Sincronizado (2026-10-07). `tipos_medidor.multiplicador/capacidadMaxima`, `lecturas.valorBruto/multiplicadorAplicado`, `RECARGA_TANQUE` + `volumenRecargado/nivelPosterior` (400/422 tipados), consumos por modo en dashboard/reportes, alertas SALTO/FUGA solo ACUMULATIVO, seed diésel 5000 L.
 - [x] **Hito 15.7 / feat-025 (OBIS/Origen/Factor por Activo):** Sincronizado (2026-10-07). `medidores.codigoExterno` único (409) + `factorInstalacion` override (efectivo = instalación ?? tipo ?? 1), `lecturas.origen` MANUAL/AJUSTE/IMPORTADA propagado en batch-sync.
+- [x] **feat-026 (local, 2026-10-14):** Tipos editables/archivables/eliminables solo sin
+  medidores asociados, reasignación validada y auditoría transaccional con snapshot/IP.
+- [x] **feat-027 (local, 2026-10-14):** Demo y simulador solo development/test; seed bloqueado
+  fuera de esos entornos; auditoría histórica preservada; salud real y SW sin probes cacheados.
+- [x] **feat-028 (local, 2026-10-14):** Series indexadas y acotadas en D1, filtros AND,
+  fechas SQLite/ISO normalizadas, scope territorial fail-closed, 401/403 y tres gráficos.
+- [ ] **Publicación de feat-026/027/028:** Autorizada; respaldo, commit/push, migración
+  0004 y despliegue en curso en este repo, independientemente del padre.
 - [ ] *(Pendiente)*: Cuando se completen nuevos hitos en el repo padre (ej: Hito 16), anótalos aquí con sus rutas, tablas e invariantes antes de iniciar la sesión de migración.
 
 ---
